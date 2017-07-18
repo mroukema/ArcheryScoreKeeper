@@ -142,5 +142,6 @@ update msg model =
             ( placeArrowWithBoundingBoxifStaged boundingBox model, Cmd.none )
 
 
+selectArrowIndex : CurrentEndControlData -> Int -> CurrentEndControlData
 selectArrowIndex controls index =
     { controls | selectedArrowIndex = index }
