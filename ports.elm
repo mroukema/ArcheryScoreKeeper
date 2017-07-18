@@ -1,6 +1,6 @@
 port module Ports exposing (..)
 
-import Target exposing (BoundingBox)
+import Types exposing (BoundingBox)
 
 
 -- port for sending strings out to JavaScript

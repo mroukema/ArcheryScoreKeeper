@@ -24,8 +24,8 @@ import Shot exposing (Shot)
 -- View
 
 
-shotPlacer : List Shot -> Svg Msg
-shotPlacer model =
+shotPlacer : List ( Int, Shot ) -> Int -> Svg Msg
+shotPlacer model selectedArrowIndex =
     Svg.g
         [ id "group" ]
         (List.concat
@@ -40,17 +40,14 @@ shotPlacer model =
                     ]
                     []
               ]
-            , (List.map Shot.arrow model)
+            , (List.map
+                (\( index, { arrow } ) ->
+                    Shot.arrow ( index, arrow )
+                )
+                model
+              )
             ]
         )
-
-
-type alias ViewBox =
-    { x : Int
-    , y : Int
-    , width : Int
-    , height : Int
-    }
 
 
 

@@ -3,6 +3,7 @@ module Shot exposing (..)
 import Svg exposing (..)
 import Score exposing (Score)
 import Arrow exposing (ArrowSpec, arrowSpecToArrowSvg, defaultArrow)
+import Messages exposing (Msg)
 
 
 type alias Shot =
@@ -11,6 +12,6 @@ type alias Shot =
     }
 
 
-arrow : Shot -> Svg msg
-arrow shot =
-    arrowSpecToArrowSvg shot.arrow
+arrow : ( Int, ArrowSpec ) -> Svg Msg
+arrow indexedShot =
+    arrowSpecToArrowSvg indexedShot

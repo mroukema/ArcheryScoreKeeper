@@ -1,32 +1,14 @@
-module Target exposing (target, Target, viewBoxToAttributeString, BoundingBox, ViewBox, translateClientToSvgCoordinates, scorePos, defaultScoringOptions)
+module Target exposing (target, Target, viewBoxToAttributeString, translateClientToSvgCoordinates, scorePos, defaultScoringOptions)
 
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Score exposing (Score)
 import Arrow
-import Mouse
 import Shot exposing (Shot)
+import Types exposing (..)
 
 
 --Model
-
-
-type alias BoundingBox =
-    { bottom : Float
-    , height : Float
-    , left : Float
-    , right : Float
-    , top : Float
-    , width : Float
-    }
-
-
-type alias ViewBox =
-    { left : Float
-    , top : Float
-    , width : Float
-    , height : Float
-    }
 
 
 viewBoxToAttributeString : ViewBox -> String
@@ -34,7 +16,7 @@ viewBoxToAttributeString viewBox =
     (toString viewBox.left) ++ " " ++ (toString viewBox.top) ++ " " ++ (toString viewBox.width) ++ " " ++ (toString viewBox.width)
 
 
-translateClientToSvgCoordinates : BoundingBox -> ViewBox -> Mouse.Position -> Arrow.Position
+translateClientToSvgCoordinates : BoundingBox -> ViewBox -> IntPosition -> FloatPosition
 translateClientToSvgCoordinates boundingBox veiwBox clientPos =
     { x =
         (((toFloat clientPos.x) - boundingBox.left)
@@ -140,12 +122,12 @@ compareShot arrow =
         (Score "M" 0)
 
 
-distanceFromCenter : Arrow.Position -> Float
+distanceFromCenter : FloatPosition -> Float
 distanceFromCenter pos =
     distance { x = 0, y = 0 } pos
 
 
-distance : Arrow.Position -> Arrow.Position -> Float
+distance : FloatPosition -> FloatPosition -> Float
 distance posA posB =
     sqrt
         (((posA.x - posB.x)

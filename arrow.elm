@@ -2,24 +2,26 @@ module Arrow exposing (..)
 
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Svg.Events exposing (..)
+import Json.Decode as Decode
+
+
+-- user imports
+
+import Messages
+import Types exposing (..)
 
 
 -- Model
 
 
-type alias Position =
-    { x : Float
-    , y : Float
-    }
-
-
 type alias ArrowSpec =
     { radius : Float
-    , pos : Position
+    , pos : FloatPosition
     }
 
 
-defaultArrow : Position -> ArrowSpec
+defaultArrow : FloatPosition -> ArrowSpec
 defaultArrow =
     ArrowSpec 0.65
 
@@ -28,10 +30,12 @@ defaultArrow =
 -- View
 
 
-arrowSpecToArrowSvg : ArrowSpec -> Svg msg
-arrowSpecToArrowSvg arrowSpec =
-    g
-        [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")") ]
+arrowSpecToArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
+arrowSpecToArrowSvg ( index, arrowSpec ) =
+    Svg.g
+        [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
+        , selectOnMouseUp (Messages.SelectArrow index)
+        ]
         [ Svg.circle
             [ cx "0"
             , cy "0"
@@ -45,6 +49,28 @@ arrowSpecToArrowSvg arrowSpec =
         ]
 
 
-arrow : Position -> Svg msg
+arrow : FloatPosition -> Svg Messages.Msg
 arrow pos =
-    arrowSpecToArrowSvg (defaultArrow pos)
+    arrowSpecToArrowSvg ( 0, (defaultArrow pos) )
+
+
+
+-- Update
+
+
+startDragOnDown msg =
+    on "mousedown"
+        (Decode.map
+            msg
+            offsetToPosition
+        )
+
+
+selectOnMouseUp msg =
+    on "mousedown"
+        (Decode.succeed msg)
+
+
+offsetToPosition : Decode.Decoder IntPosition
+offsetToPosition =
+    Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int)

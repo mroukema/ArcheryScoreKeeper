@@ -1,11 +1,13 @@
 module Messages exposing (Msg(..))
 
-import Mouse exposing (..)
-import Arrow exposing (Position)
-import Target exposing (BoundingBox)
+import Types exposing (IntPosition, BoundingBox)
 
 
 type Msg
     = NoOp
-    | PlaceMouseCoor Mouse.Position
+    | ArrowDragStart Int IntPosition
+    | ArrowDrag Int IntPosition
+    | ArrowDragEnd Int IntPosition
+    | SelectArrow Int
+    | PlaceMouseCoor IntPosition
     | BoundingBoxResult BoundingBox

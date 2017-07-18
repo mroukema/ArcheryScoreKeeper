@@ -18,6 +18,7 @@ import ShotPlacer exposing (shotPlacer)
 import Shot exposing (Shot)
 import Target exposing (..)
 import Arrow
+import Types exposing (..)
 
 
 -- Model
@@ -65,8 +66,8 @@ initialControlData : CurrentEndControlData
 initialControlData =
     CurrentEndControlData
         0
-        (Target.ViewBox -45 -45 90 90)
-        (Target.BoundingBox 0 0 0 0 0 0)
+        (Types.ViewBox -45 -45 90 90)
+        (Types.BoundingBox 0 0 0 0 0 0)
 
 
 getShotsFromEnd : Array EndEntry -> List Shot
@@ -78,7 +79,7 @@ appendIfIsShot : EndEntry -> List Shot -> List Shot
 appendIfIsShot endEntry shotList =
     case endEntry of
         FilledEntry shot ->
-            List.append shotList [ shot ]
+            List.append [ shot ] shotList
 
         Empty ->
             shotList
@@ -100,7 +101,7 @@ view model =
                 , id "TargetSvg"
                 ]
                 [ target.view
-                , shotPlacer (getShotsFromEnd <| model.endData.endEntries)
+                , shotPlacer (List.indexedMap (,) (getShotsFromEnd <| model.endData.endEntries)) model.controlData.selectedArrowIndex
                 ]
             ]
         , section [ class "mdc-card__media" ]
@@ -175,7 +176,7 @@ endEntryRadioButton endEntry =
 -- Update
 
 
-updateCurrentEnd : CurrentEndControlData -> End -> Mouse.Position -> BoundingBox -> ( End, CurrentEndControlData )
+updateCurrentEnd : CurrentEndControlData -> End -> IntPosition -> BoundingBox -> ( End, CurrentEndControlData )
 updateCurrentEnd controlData currentEnd mousePos boundingBox =
     let
         shot =
