@@ -22,8 +22,8 @@ type alias BoundingBox =
 
 
 type alias ViewBox =
-    { x : Float
-    , y : Float
+    { left : Float
+    , top : Float
     , width : Float
     , height : Float
     }
@@ -31,21 +31,21 @@ type alias ViewBox =
 
 viewBoxToAttributeString : ViewBox -> String
 viewBoxToAttributeString viewBox =
-    (toString viewBox.x) ++ " " ++ (toString viewBox.y) ++ " " ++ (toString viewBox.width) ++ " " ++ (toString viewBox.width)
+    (toString viewBox.left) ++ " " ++ (toString viewBox.top) ++ " " ++ (toString viewBox.width) ++ " " ++ (toString viewBox.width)
 
 
 translateClientToSvgCoordinates : BoundingBox -> ViewBox -> Mouse.Position -> Arrow.Position
-translateClientToSvgCoordinates bBox vBox clientPos =
+translateClientToSvgCoordinates boundingBox veiwBox clientPos =
     { x =
-        (((toFloat clientPos.x) - bBox.left)
-            * (vBox.width / bBox.width)
+        (((toFloat clientPos.x) - boundingBox.left)
+            * (veiwBox.width / boundingBox.width)
         )
-            + (vBox.x)
+            + veiwBox.left
     , y =
-        (((toFloat clientPos.y) - bBox.top)
-            * (vBox.height / bBox.height)
+        (((toFloat clientPos.y) - boundingBox.top)
+            * (veiwBox.height / boundingBox.height)
         )
-            + vBox.y
+            + veiwBox.top
     }
 
 
@@ -73,10 +73,6 @@ defaultScoringOptions =
 scorePos : ScoringOptions -> TargetSpec -> Arrow.ArrowSpec -> Shot
 scorePos options target arrow =
     List.foldl (foldOp options) (compareShot arrow) target
-
-
-
---List.foldl (a -> b -> b) b List a (::) target.spec arrow.pos
 
 
 foldOp : ScoringOptions -> TargetRingSpec -> Shot -> Shot
@@ -201,13 +197,19 @@ tenRingTarget =
 -- View
 
 
-targetGen : List TargetRingSpec -> List (Svg msg)
-targetGen targetSpec =
-    List.map ringGen targetSpec
+targetGenerator : List TargetRingSpec -> Svg msg
+targetGenerator targetSpec =
+    Svg.g
+        []
+        (List.concat
+            [ (List.map ringGenerator targetSpec)
+            , [ centerCrossHair ]
+            ]
+        )
 
 
-ringGen : TargetRingSpec -> Svg msg
-ringGen ringSpec =
+ringGenerator : TargetRingSpec -> Svg msg
+ringGenerator ringSpec =
     Svg.circle (ringSpecToAttributeList ringSpec) []
 
 
@@ -229,14 +231,7 @@ centerCrossHair =
 
 target : Target msg
 target =
-    { view =
-        Svg.g
-            []
-            (List.concat
-                [ (targetGen tenRingTarget)
-                , [ centerCrossHair ]
-                ]
-            )
+    { view = targetGenerator tenRingTarget
     , spec = tenRingTarget
     , viewBox = ViewBox -45 -45 90 90
     }

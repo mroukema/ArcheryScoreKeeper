@@ -61,24 +61,12 @@ initialEnd shotsPerEnd =
     }
 
 
+initialControlData : CurrentEndControlData
 initialControlData =
     CurrentEndControlData
         0
         (Target.ViewBox -45 -45 90 90)
         (Target.BoundingBox 0 0 0 0 0 0)
-
-
-
--- newCurrentEnd : Int -> CurrentEnd
--- newCurrentEnd shotsPerEnd =
---     { endData =
---         { endEntries = initInitialShotList shotsPerEnd
---         , shotsPerEnd = shotsPerEnd
---         , endNumber = 1
---         }
---     , controlData =
---
---     }
 
 
 getShotsFromEnd : Array EndEntry -> List Shot
@@ -98,7 +86,6 @@ appendIfIsShot endEntry shotList =
 
 
 -- View
--- -> Html msg
 
 
 view : CurrentEnd -> Html Messages.Msg
@@ -111,8 +98,6 @@ view model =
                 , height "100%"
                 , viewBox (viewBoxToAttributeString model.controlData.viewBox)
                 , id "TargetSvg"
-
-                --, Svg.Attributes.class "mdc-layout-grid__cell"
                 ]
                 [ target.view
                 , shotPlacer (getShotsFromEnd <| model.endData.endEntries)
@@ -131,6 +116,7 @@ currentEnd =
     Html.text "Current End"
 
 
+endEntryView : End -> Html msg
 endEntryView end =
     div
         [ class "mdc-card__horizontal-block" ]
@@ -142,10 +128,12 @@ endEntryView end =
         )
 
 
+totalEndEntries : Array EndEntry -> Int
 totalEndEntries entries =
     Array.foldr addEntryValue 0 entries
 
 
+addEntryValue : EndEntry -> Int -> Int
 addEntryValue entryA sum =
     case entryA of
         FilledEntry shot ->
@@ -155,18 +143,21 @@ addEntryValue entryA sum =
             sum
 
 
+endNumberSection : String -> Html msg
 endNumberSection endNumber =
     section
         [ class "mdc-card__media" ]
         [ h1 [] [ text endNumber ] ]
 
 
+endTotalSection : String -> Html msg
 endTotalSection endTotal =
     section
         [ class "mdc-card__media" ]
         [ h2 [] [ text endTotal ] ]
 
 
+endEntryRadioButton : EndEntry -> Html msg
 endEntryRadioButton endEntry =
     case endEntry of
         FilledEntry shot ->

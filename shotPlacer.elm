@@ -57,6 +57,7 @@ type alias ViewBox =
 -- Update
 
 
+placeArrowOnClick : (Mouse.Position -> value) -> Attribute value
 placeArrowOnClick msg =
     on "mousedown"
         (Decode.map

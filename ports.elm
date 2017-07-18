@@ -1,15 +1,6 @@
 port module Ports exposing (..)
 
-
-type alias BoundingBox =
-    { bottom : Float
-    , height : Float
-    , left : Float
-    , right : Float
-    , top : Float
-    , width : Float
-    }
-
+import Target exposing (BoundingBox)
 
 
 -- port for sending strings out to JavaScript

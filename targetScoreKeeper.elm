@@ -91,12 +91,17 @@ subscriptions model =
 
 
 placeArrowWithBoundingBoxifStaged : BoundingBox -> Model -> Model
-placeArrowWithBoundingBoxifStaged bBox model =
+placeArrowWithBoundingBoxifStaged boundingBox model =
     case model.stagedMousePosition of
         Just mousePosition ->
             let
                 ( updatedEnd, updatedControls ) =
-                    (updateCurrentEnd model.currentEndControls model.end mousePosition bBox)
+                    (updateCurrentEnd
+                        model.currentEndControls
+                        model.end
+                        mousePosition
+                        boundingBox
+                    )
             in
                 { model
                     | end = updatedEnd
@@ -114,12 +119,12 @@ update msg model =
         Messages.NoOp ->
             ( model, Cmd.none )
 
-        Messages.PlaceMouseCoor mPos ->
+        Messages.PlaceMouseCoor mousePosition ->
             ( { model
-                | stagedMousePosition = Just mPos
+                | stagedMousePosition = Just mousePosition
               }
             , (Ports.getClientBoundingBox "TargetSvg")
             )
 
-        Messages.BoundingBoxResult bBox ->
-            ( placeArrowWithBoundingBoxifStaged bBox model, Cmd.none )
+        Messages.BoundingBoxResult boundingBox ->
+            ( placeArrowWithBoundingBoxifStaged boundingBox model, Cmd.none )

@@ -2,7 +2,7 @@ module Messages exposing (Msg(..))
 
 import Mouse exposing (..)
 import Arrow exposing (Position)
-import Ports exposing (BoundingBox)
+import Target exposing (BoundingBox)
 
 
 type Msg
