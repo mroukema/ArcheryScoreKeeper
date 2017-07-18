@@ -122,7 +122,7 @@ endEntryView end =
         [ class "mdc-card__horizontal-block" ]
         (List.concat
             [ [ endNumberSection <| toString <| end.endNumber ]
-            , List.map endEntryRadioButton (Array.toList end.endEntries)
+            , List.map endEntryRadioButton (Array.toIndexedList end.endEntries)
             , [ endTotalSection <| toString <| totalEndEntries end.endEntries ]
             ]
         )
@@ -157,18 +157,18 @@ endTotalSection endTotal =
         [ h2 [] [ text endTotal ] ]
 
 
-endEntryRadioButton : EndEntry -> Html msg
-endEntryRadioButton endEntry =
+endEntryRadioButton : ( Int, EndEntry ) -> Html msg
+endEntryRadioButton ( index, endEntry ) =
     case endEntry of
         FilledEntry shot ->
             section
                 [ class "mdc-card__media" ]
-                [ h2 [] [ text shot.score.label ] ]
+                [ h2 [ id (toString index) ] [ text shot.score.label ] ]
 
         Empty ->
             section
                 [ class "mdc-card__media" ]
-                [ h2 [] [ text "-" ] ]
+                [ h2 [ id (toString index) ] [ text "-" ] ]
 
 
 
