@@ -44,10 +44,27 @@ shotPlacer model selectedArrowIndex =
                 (\( index, { arrow } ) ->
                     Shot.arrow ( index, arrow )
                 )
-                model
+                (selectedArrowLast
+                    model
+                    selectedArrowIndex
+                )
               )
             ]
         )
+
+
+isSelectedArrow : Int -> ( Int, Shot ) -> Bool
+isSelectedArrow currentIndex ( index, shot ) =
+    currentIndex == index
+
+
+selectedArrowLast : List ( Int, Shot ) -> Int -> List ( Int, Shot )
+selectedArrowLast indexedShots currentIndex =
+    let
+        ( selectedShotList, notSelected ) =
+            List.partition (isSelectedArrow currentIndex) indexedShots
+    in
+        List.concat [ notSelected, selectedShotList ]
 
 
 
