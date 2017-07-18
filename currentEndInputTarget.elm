@@ -7,7 +7,6 @@ import Html exposing (..)
 import Html.Attributes exposing (class)
 import Svg exposing (svg)
 import Svg.Attributes exposing (version, width, height, viewBox, id, viewBox, path, fill, stroke, d)
-import Mouse
 
 
 -- user iports
@@ -176,6 +175,31 @@ endEntryRadioButton endEntry =
 -- Update
 
 
+firstEmptyIndexOrCurrent : Array EndEntry -> Int -> Int
+firstEmptyIndexOrCurrent endEntries current =
+    let
+        emptyEntryIndex : Maybe Int
+        emptyEntryIndex =
+            List.foldr
+                (\( index, entry ) currentIndex ->
+                    case entry of
+                        Empty ->
+                            Just index
+
+                        FilledEntry shot ->
+                            currentIndex
+                )
+                Nothing
+                (Array.toIndexedList endEntries)
+    in
+        case (emptyEntryIndex) of
+            Just index ->
+                index
+
+            Nothing ->
+                current
+
+
 updateCurrentEnd : CurrentEndControlData -> End -> IntPosition -> BoundingBox -> ( End, CurrentEndControlData )
 updateCurrentEnd controlData currentEnd mousePos boundingBox =
     let
@@ -187,14 +211,16 @@ updateCurrentEnd controlData currentEnd mousePos boundingBox =
                     (translateClientToSvgCoordinates boundingBox controlData.viewBox mousePos)
                 )
             )
+
+        updatedEnd =
+            (Array.set
+                controlData.selectedArrowIndex
+                (FilledEntry shot)
+                currentEnd.endEntries
+            )
     in
         ( { currentEnd
-            | endEntries =
-                (Array.set
-                    controlData.selectedArrowIndex
-                    (FilledEntry shot)
-                    currentEnd.endEntries
-                )
+            | endEntries = updatedEnd
           }
-        , { controlData | selectedArrowIndex = (controlData.selectedArrowIndex + 1) % currentEnd.shotsPerEnd }
+        , { controlData | selectedArrowIndex = firstEmptyIndexOrCurrent updatedEnd controlData.selectedArrowIndex }
         )
