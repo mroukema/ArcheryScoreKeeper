@@ -7,20 +7,14 @@ import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
 import Mouse exposing (..)
 import Json.Decode as Decode
-import Html.Events
 
 
 -- user
 
-import Arrow exposing (..)
 import Messages exposing (Msg)
 import Shot exposing (Shot)
 
 
--- Model
---type alias Model =
---    { arrowPosList : List Arrow.Position
---    }
 -- View
 
 
