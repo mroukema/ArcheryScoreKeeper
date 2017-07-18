@@ -43,6 +43,36 @@ arrowSpecToArrowSvg ( index, arrowSpec ) =
             , fill "white"
             , stroke "black"
             , strokeWidth (toString 0.1)
+            , id "arrowCircle"
+            ]
+            []
+        , Svg.path [ d "M -0.3 0 L 0.3 0 M 0 -0.3 L 0 0.3", stroke "black", strokeWidth "0.1", id "Center" ] []
+        ]
+
+
+arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
+arrowSpecToSelectedArrowSvg ( index, arrowSpec ) =
+    Svg.g
+        [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
+        , selectOnMouseUp (Messages.SelectArrow index)
+        ]
+        [ Svg.circle
+            [ cx "0"
+            , cy "0"
+            , r (toString arrowSpec.radius)
+            , fill "white"
+            , stroke "black"
+            , strokeWidth (0.1 |> toString)
+            , id "arrowCircle"
+            ]
+            []
+        , Svg.circle
+            [ cx "0"
+            , cy "0"
+            , r (arrowSpec.radius * 1.65 |> toString)
+            , fill "blue"
+            , opacity ".4"
+            , id "selectedHighlight"
             ]
             []
         , Svg.path [ d "M -0.3 0 L 0.3 0 M 0 -0.3 L 0 0.3", stroke "black", strokeWidth "0.1", id "Center" ] []

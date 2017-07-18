@@ -36,7 +36,7 @@ shotPlacer model selectedArrowIndex =
               ]
             , (List.map
                 (\( index, { arrow } ) ->
-                    Shot.arrow ( index, arrow )
+                    Shot.arrow ( index, arrow ) (selectedArrowIndex == index)
                 )
                 (selectedArrowLast
                     model
