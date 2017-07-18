@@ -54,7 +54,7 @@ defaultScoringOptions =
 
 scorePos : ScoringOptions -> TargetSpec -> Arrow.ArrowSpec -> Shot
 scorePos options target arrow =
-    List.foldl (foldOp options) (compareShot arrow) target
+    List.foldr (foldOp options) (compareShot arrow) target
 
 
 foldOp : ScoringOptions -> TargetRingSpec -> Shot -> Shot
@@ -95,7 +95,7 @@ getLineBreakOptionForCurrentRing options targetRingSpec =
 
 targetScoreGreater : TargetRingSpec -> Shot -> Bool
 targetScoreGreater targetSpec currentShot =
-    not (currentShot.score.value > targetSpec.score.value)
+    targetSpec.score.value > currentShot.score.value
 
 
 withinRingBounds : LineBreakOption -> Float -> Arrow.ArrowSpec -> Bool
