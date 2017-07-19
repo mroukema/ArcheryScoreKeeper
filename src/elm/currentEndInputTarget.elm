@@ -36,7 +36,7 @@ type alias End =
 
 
 type alias CurrentEndControlData =
-    { selectedArrowIndex : Int
+    { selectedArrowIndex : Maybe Int
     , viewBox : ViewBox
     , boundingBox : BoundingBox
     }
@@ -64,7 +64,7 @@ initialEnd shotsPerEnd =
 initialControlData : CurrentEndControlData
 initialControlData =
     CurrentEndControlData
-        0
+        (Just 0)
         (Types.ViewBox -45 -45 90 90)
         (Types.BoundingBox 0 0 0 0 0 0)
 
@@ -175,7 +175,17 @@ endEntryRadioButton ( index, endEntry ) =
 -- Update
 
 
-firstEmptyIndexOrCurrent : Array EndEntry -> Int -> Int
+selectArrowIndex : Array EndEntry -> CurrentEndControlData -> Maybe Int -> CurrentEndControlData
+selectArrowIndex endEntries controls index =
+    case index of
+        Just index_ ->
+            { controls | selectedArrowIndex = index }
+
+        Nothing ->
+            { controls | selectedArrowIndex = firstEmptyIndexOrCurrent endEntries Nothing }
+
+
+firstEmptyIndexOrCurrent : Array EndEntry -> Maybe Int -> Maybe Int
 firstEmptyIndexOrCurrent endEntries current =
     let
         emptyEntryIndex : Maybe Int
@@ -194,7 +204,7 @@ firstEmptyIndexOrCurrent endEntries current =
     in
         case (emptyEntryIndex) of
             Just index ->
-                index
+                Just index
 
             Nothing ->
                 current
@@ -212,15 +222,20 @@ updateCurrentEnd controlData currentEnd mousePos boundingBox =
                 )
             )
 
-        updatedEnd =
-            (Array.set
-                controlData.selectedArrowIndex
-                (FilledEntry shot)
-                currentEnd.endEntries
-            )
+        updatedEntries =
+            case controlData.selectedArrowIndex of
+                Just index ->
+                    (Array.set
+                        index
+                        (FilledEntry shot)
+                        currentEnd.endEntries
+                    )
+
+                Nothing ->
+                    currentEnd.endEntries
     in
         ( { currentEnd
-            | endEntries = updatedEnd
+            | endEntries = updatedEntries
           }
-        , { controlData | selectedArrowIndex = firstEmptyIndexOrCurrent updatedEnd controlData.selectedArrowIndex }
+        , { controlData | selectedArrowIndex = firstEmptyIndexOrCurrent updatedEntries controlData.selectedArrowIndex }
         )

@@ -11,7 +11,15 @@ import Mouse
 
 import Messages exposing (Msg)
 import Ports
-import CurrentEndInputTarget exposing (updateCurrentEnd, CurrentEnd, initialEnd, initialControlData, CurrentEndControlData)
+import CurrentEndInputTarget
+    exposing
+        ( updateCurrentEnd
+        , CurrentEnd
+        , selectArrowIndex
+        , initialEnd
+        , initialControlData
+        , CurrentEndControlData
+        )
 import Types exposing (..)
 
 
@@ -129,7 +137,10 @@ update msg model =
             ( model, Cmd.none )
 
         Messages.SelectArrow index ->
-            ( { model | currentEndControls = selectArrowIndex model.currentEndControls index }, Cmd.none )
+            ( { model | currentEndControls = selectArrowIndex model.end.endEntries model.currentEndControls (Just index) }, Cmd.none )
+
+        Messages.DeselectArrow ->
+            ( { model | currentEndControls = selectArrowIndex model.end.endEntries model.currentEndControls Nothing }, Cmd.none )
 
         Messages.PlaceMouseCoor mousePosition ->
             ( { model
@@ -140,8 +151,3 @@ update msg model =
 
         Messages.BoundingBoxResult boundingBox ->
             ( placeArrowWithBoundingBoxifStaged boundingBox model, Cmd.none )
-
-
-selectArrowIndex : CurrentEndControlData -> Int -> CurrentEndControlData
-selectArrowIndex controls index =
-    { controls | selectedArrowIndex = index }

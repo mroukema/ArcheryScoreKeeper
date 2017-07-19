@@ -9,5 +9,6 @@ type Msg
     | ArrowDrag Int IntPosition
     | ArrowDragEnd Int IntPosition
     | SelectArrow Int
+    | DeselectArrow
     | PlaceMouseCoor IntPosition
     | BoundingBoxResult BoundingBox

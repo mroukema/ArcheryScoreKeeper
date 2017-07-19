@@ -54,7 +54,7 @@ arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
 arrowSpecToSelectedArrowSvg ( index, arrowSpec ) =
     Svg.g
         [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
-        , selectOnMouseUp (Messages.SelectArrow index)
+        , selectOnMouseUp Messages.DeselectArrow
         ]
         [ Svg.circle
             [ cx "0"
