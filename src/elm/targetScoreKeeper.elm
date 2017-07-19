@@ -4,12 +4,11 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes
-import Mouse
 
 
 -- user
 
-import Messages exposing (Msg)
+import Messages exposing (..)
 import Ports
 import CurrentEndInputTarget
     exposing
@@ -43,7 +42,7 @@ main =
 type alias Model =
     { currentEndControls : CurrentEndControlData
     , end : CurrentEndInputTarget.End
-    , stagedMousePosition : Maybe Mouse.Position
+    , stagedMessageAwaitingBoundingBox : Maybe (BoundingBox -> Msg)
     }
 
 
@@ -51,7 +50,7 @@ initialModel : Model
 initialModel =
     { currentEndControls = initialControlData
     , end = initialEnd 3
-    , stagedMousePosition = Nothing
+    , stagedMessageAwaitingBoundingBox = Nothing
     }
 
 
@@ -98,31 +97,31 @@ subscriptions model =
 -- Update
 
 
-placeArrowWithBoundingBoxifStaged : BoundingBox -> Model -> Model
-placeArrowWithBoundingBoxifStaged boundingBox model =
-    case model.stagedMousePosition of
-        Just mousePosition ->
-            let
-                ( updatedEnd, updatedControls ) =
-                    (updateCurrentEnd
-                        model.currentEndControls
-                        model.end
-                        mousePosition
-                        boundingBox
-                    )
-            in
-                { model
-                    | end = updatedEnd
-                    , currentEndControls = updatedControls
-                    , stagedMousePosition = Nothing
-                }
-
-        Nothing ->
-            model
+placeArrowOnShotPlacer : Model -> IntPosition -> BoundingBox -> Model
+placeArrowOnShotPlacer model mousePosition boundingBox =
+    let
+        ( updatedEnd, updatedControls ) =
+            (updateCurrentEnd
+                model.currentEndControls
+                model.end
+                mousePosition
+                boundingBox
+            )
+    in
+        { model
+            | end = updatedEnd
+            , currentEndControls = updatedControls
+        }
 
 
+setArrowDragStarted : CurrentEndControlData -> CurrentEndControlData
 setArrowDragStarted controls =
     { controls | dragInProgress = True }
+
+
+setArrowDragStartedWithBox : CurrentEndControlData -> BoundingBox -> CurrentEndControlData
+setArrowDragStartedWithBox controls boundingBox =
+    { controls | dragInProgress = True, boundingBox = boundingBox }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -135,8 +134,8 @@ update msg model =
             case buttons > 0 of
                 True ->
                     ( { model
-                        | currentEndControls = setArrowDragStarted model.currentEndControls
-                        , stagedMousePosition = Just mousePosition
+                        | stagedMessageAwaitingBoundingBox = Just (ArrowDragStart mousePosition)
+                        , currentEndControls = setArrowDragStarted model.currentEndControls
                       }
                     , (Ports.getClientBoundingBox "TargetSvg")
                     )
@@ -144,15 +143,21 @@ update msg model =
                 False ->
                     ( model, Cmd.none )
 
-        Messages.ArrowDragStart mousePosition ->
-            ( model, Cmd.none )
+        Messages.ArrowDragStart mousePosition boundingBox ->
+            ( placeArrowOnShotPlacer
+                { model
+                    | currentEndControls =
+                        setArrowDragStartedWithBox
+                            model.currentEndControls
+                            boundingBox
+                }
+                mousePosition
+                boundingBox
+            , Cmd.none
+            )
 
         Messages.ArrowDrag mousePosition ->
-            ( { model
-                | stagedMousePosition = Just mousePosition
-              }
-            , (Ports.getClientBoundingBox "TargetSvg")
-            )
+            ( placeArrowOnShotPlacer model mousePosition model.currentEndControls.boundingBox, Cmd.none )
 
         Messages.ArrowDragEnd mousePosition ->
             ( model, Cmd.none )
@@ -165,10 +170,20 @@ update msg model =
 
         Messages.PlaceMouseCoor mousePosition ->
             ( { model
-                | stagedMousePosition = Just mousePosition
+                | stagedMessageAwaitingBoundingBox = Just (PlaceArrow mousePosition)
               }
             , (Ports.getClientBoundingBox "TargetSvg")
             )
 
+        Messages.PlaceArrow mousePosition boundingBox ->
+            ( placeArrowOnShotPlacer model mousePosition boundingBox, Cmd.none )
+
         Messages.BoundingBoxResult boundingBox ->
-            ( placeArrowWithBoundingBoxifStaged boundingBox model, Cmd.none )
+            case model.stagedMessageAwaitingBoundingBox of
+                Just msgPartial ->
+                    update
+                        (msgPartial boundingBox)
+                        { model | stagedMessageAwaitingBoundingBox = Nothing }
+
+                Nothing ->
+                    ( model, Cmd.none )
