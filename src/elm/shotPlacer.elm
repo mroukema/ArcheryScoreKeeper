@@ -11,15 +11,16 @@ import Json.Decode as Decode
 
 -- user
 
-import Messages exposing (Msg)
+import Messages exposing (..)
 import Shot exposing (Shot)
 
 
+-- Model
 -- View
 
 
-shotPlacer : List ( Int, Shot ) -> Maybe Int -> Svg Msg
-shotPlacer model selectedArrowIndex =
+shotPlacer : List ( Int, Shot ) -> Maybe Int -> Bool -> Svg Msg
+shotPlacer model selectedArrowIndex arrowDragInProgress =
     let
         selectedArrowIndex_ =
             case selectedArrowIndex of
@@ -28,6 +29,14 @@ shotPlacer model selectedArrowIndex =
 
                 Nothing ->
                     -1
+
+        ( htmlEvent, messageType ) =
+            case arrowDragInProgress of
+                True ->
+                    ( "mousemove", ArrowDrag )
+
+                False ->
+                    ( "mousedown", PlaceMouseCoor )
     in
         Svg.g
             [ id "group" ]
@@ -38,7 +47,9 @@ shotPlacer model selectedArrowIndex =
                         , width "100%"
                         , height "100%"
                         , fillOpacity "0"
-                        , placeArrowOnClick (Messages.PlaceMouseCoor)
+                        , on htmlEvent (Decode.map messageType offsetToPosition)
+
+                        --, placeArrowOnClick (Messages.PlaceMouseCoor)
                         , id "ShotPlacer"
                         ]
                         []

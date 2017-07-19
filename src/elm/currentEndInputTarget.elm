@@ -39,6 +39,7 @@ type alias CurrentEndControlData =
     { selectedArrowIndex : Maybe Int
     , viewBox : ViewBox
     , boundingBox : BoundingBox
+    , dragInProgress : Bool
     }
 
 
@@ -67,6 +68,7 @@ initialControlData =
         (Just 0)
         (Types.ViewBox -45 -45 90 90)
         (Types.BoundingBox 0 0 0 0 0 0)
+        False
 
 
 getShotsFromEnd : Array EndEntry -> List Shot
@@ -100,7 +102,13 @@ view model =
                 , id "TargetSvg"
                 ]
                 [ target.view
-                , shotPlacer (List.indexedMap (,) (getShotsFromEnd <| model.endData.endEntries)) model.controlData.selectedArrowIndex
+                , shotPlacer
+                    (List.indexedMap
+                        (,)
+                        (getShotsFromEnd <| model.endData.endEntries)
+                    )
+                    model.controlData.selectedArrowIndex
+                    model.controlData.dragInProgress
                 ]
             ]
         , section [ class "mdc-card__media" ]

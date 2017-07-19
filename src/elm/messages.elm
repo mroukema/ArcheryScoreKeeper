@@ -5,9 +5,10 @@ import Types exposing (IntPosition, BoundingBox)
 
 type Msg
     = NoOp
-    | ArrowDragStart Int IntPosition
-    | ArrowDrag Int IntPosition
-    | ArrowDragEnd Int IntPosition
+    | ArrowDragPotentialStart Int IntPosition
+    | ArrowDragStart IntPosition
+    | ArrowDrag IntPosition
+    | ArrowDragEnd IntPosition
     | SelectArrow Int
     | DeselectArrow
     | PlaceMouseCoor IntPosition

@@ -121,19 +121,40 @@ placeArrowWithBoundingBoxifStaged boundingBox model =
             model
 
 
+setArrowDragStarted controls =
+    { controls | dragInProgress = True }
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Messages.NoOp ->
             ( model, Cmd.none )
 
-        Messages.ArrowDragStart index mousePos ->
+        Messages.ArrowDragPotentialStart buttons mousePosition ->
+            case buttons > 0 of
+                True ->
+                    ( { model
+                        | currentEndControls = setArrowDragStarted model.currentEndControls
+                        , stagedMousePosition = Just mousePosition
+                      }
+                    , (Ports.getClientBoundingBox "TargetSvg")
+                    )
+
+                False ->
+                    ( model, Cmd.none )
+
+        Messages.ArrowDragStart mousePosition ->
             ( model, Cmd.none )
 
-        Messages.ArrowDrag index mousePos ->
-            ( model, Cmd.none )
+        Messages.ArrowDrag mousePosition ->
+            ( { model
+                | stagedMousePosition = Just mousePosition
+              }
+            , (Ports.getClientBoundingBox "TargetSvg")
+            )
 
-        Messages.ArrowDragEnd index mousePos ->
+        Messages.ArrowDragEnd mousePosition ->
             ( model, Cmd.none )
 
         Messages.SelectArrow index ->
