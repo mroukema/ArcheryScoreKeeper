@@ -182,7 +182,7 @@ selectArrowIndex endEntries controls index =
             { controls | selectedArrowIndex = index }
 
         Nothing ->
-            { controls | selectedArrowIndex = firstEmptyIndexOrCurrent endEntries Nothing }
+            { controls | selectedArrowIndex = firstEmptyIndexOrCurrent endEntries index }
 
 
 firstEmptyIndexOrCurrent : Array EndEntry -> Maybe Int -> Maybe Int

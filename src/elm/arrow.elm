@@ -8,7 +8,7 @@ import Json.Decode as Decode
 
 -- user imports
 
-import Messages
+import Messages exposing (Msg)
 import Types exposing (..)
 
 
@@ -34,7 +34,7 @@ arrowSpecToArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
 arrowSpecToArrowSvg ( index, arrowSpec ) =
     Svg.g
         [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
-        , selectOnMouseUp (Messages.SelectArrow index)
+        , selectOnClick index
         ]
         [ Svg.circle
             [ cx "0"
@@ -54,7 +54,7 @@ arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
 arrowSpecToSelectedArrowSvg ( index, arrowSpec ) =
     Svg.g
         [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
-        , selectOnMouseUp Messages.DeselectArrow
+        , deselectOnClick
         ]
         [ Svg.circle
             [ cx "0"
@@ -96,9 +96,16 @@ startDragOnDown msg =
         )
 
 
-selectOnMouseUp msg =
-    on "mousedown"
-        (Decode.succeed msg)
+selectOnClick : Int -> Attribute Msg
+selectOnClick index =
+    on "click"
+        (Decode.succeed <| Messages.SelectArrow index)
+
+
+deselectOnClick : Attribute Msg
+deselectOnClick =
+    on "click"
+        (Decode.succeed Messages.DeselectArrow)
 
 
 offsetToPosition : Decode.Decoder IntPosition
