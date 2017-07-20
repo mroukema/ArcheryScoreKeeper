@@ -30,33 +30,39 @@ shotPlacer model selectedArrowIndex arrowDragInProgress =
                 Nothing ->
                     -1
 
-        ( htmlEvent, messageType ) =
+        eventListeners =
             case arrowDragInProgress of
                 True ->
-                    ( "mousemove", ArrowDrag )
+                    [ on "mousemove" (Decode.map ArrowDrag offsetToPosition)
+                    , on "mouseup" (Decode.map2 makeStagedMessage (Decode.succeed ArrowDragEnd) offsetToPosition)
+                    ]
 
                 False ->
-                    ( "mousedown", PlaceMouseCoor )
+                    [ on "mousedown" (Decode.map2 makeStagedMessage (Decode.succeed PlaceArrow) offsetToPosition) ]
     in
         Svg.g
             [ id "group" ]
             (List.concat
                 [ [ Svg.rect
-                        [ x "-50%"
-                        , y "-50%"
-                        , width "100%"
-                        , height "100%"
-                        , fillOpacity "0"
-                        , on htmlEvent (Decode.map messageType offsetToPosition)
+                        (List.concat
+                            [ [ x "-50%"
+                              , y "-50%"
+                              , width "100%"
+                              , height "100%"
+                              , fillOpacity "0"
 
-                        --, placeArrowOnClick (Messages.PlaceMouseCoor)
-                        , id "ShotPlacer"
-                        ]
+                              --, on htmlEvent (Decode.map messageType offsetToPosition)
+                              --, placeArrowOnClick (Messages.PlaceMouseCoor)
+                              , id "ShotPlacer"
+                              ]
+                            , eventListeners
+                            ]
+                        )
                         []
                   ]
                 , (List.map
                     (\( index, { arrow } ) ->
-                        Shot.arrow ( index, arrow ) (selectedArrowIndex_ == index)
+                        Shot.arrow ( index, arrow ) (selectedArrowIndex_ == index) arrowDragInProgress
                     )
                     (selectedArrowLast
                         model

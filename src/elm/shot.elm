@@ -12,11 +12,11 @@ type alias Shot =
     }
 
 
-arrow : ( Int, ArrowSpec ) -> Bool -> Svg Msg
-arrow indexedShot isSelected =
+arrow : ( Int, ArrowSpec ) -> Bool -> Bool -> Svg Msg
+arrow indexedShot isSelected isDragInProgress =
     case isSelected of
         True ->
-            arrowSpecToSelectedArrowSvg indexedShot
+            arrowSpecToSelectedArrowSvg indexedShot isDragInProgress
 
         False ->
             arrowSpecToArrowSvg indexedShot

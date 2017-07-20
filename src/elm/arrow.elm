@@ -50,13 +50,28 @@ arrowSpecToArrowSvg ( index, arrowSpec ) =
         ]
 
 
-arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
-arrowSpecToSelectedArrowSvg ( index, arrowSpec ) =
+selectedArrowEvents isDragInProgress =
+    case isDragInProgress of
+        True ->
+            [ deselectOnClick ]
+
+        False ->
+            [ deselectOnClick
+            , startDragOnPressedMouseMove
+            ]
+
+
+arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Bool -> Svg Messages.Msg
+arrowSpecToSelectedArrowSvg ( index, arrowSpec ) isDragInProgress =
     Svg.g
-        [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
-        , deselectOnClick
-        , startDragOnPressedMouseMove
-        ]
+        (List.concat
+            [ [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
+              , deselectOnClick
+              , startDragOnPressedMouseMove
+              ]
+            , selectedArrowEvents isDragInProgress
+            ]
+        )
         [ Svg.circle
             [ cx "0"
             , cy "0"
@@ -91,8 +106,9 @@ arrow pos =
 
 startDragOnPressedMouseMove =
     on "mousemove"
-        (Decode.map2
-            ArrowDragPotentialStart
+        (Decode.map3
+            (\partial buttons intPos -> StageMsgPartial (partial buttons intPos))
+            (Decode.succeed ArrowDragPotentialStart)
             (Decode.field "buttons" Decode.int)
             (Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int))
         )

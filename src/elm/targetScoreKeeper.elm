@@ -20,6 +20,7 @@ import CurrentEndInputTarget
         , CurrentEndControlData
         )
 import Types exposing (..)
+import Debug
 
 
 -- Main
@@ -88,9 +89,16 @@ debugModel model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Ports.boundingBoxResult Messages.BoundingBoxResult
-        ]
+    case (Debug.log "Message=" model.stagedMessageAwaitingBoundingBox) of
+        Just stagedMessage ->
+            Sub.batch
+                [ Ports.boundingBoxResult (BoundingBoxResult (Just stagedMessage))
+                ]
+
+        Nothing ->
+            Sub.batch
+                [ Ports.boundingBoxResult (BoundingBoxResult Nothing)
+                ]
 
 
 
@@ -111,6 +119,7 @@ placeArrowOnShotPlacer model mousePosition boundingBox =
         { model
             | end = updatedEnd
             , currentEndControls = updatedControls
+            , stagedMessageAwaitingBoundingBox = Nothing
         }
 
 
@@ -126,40 +135,33 @@ setArrowDragStartedWithBox controls boundingBox =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
+    case Debug.log "Update=" msg of
         Messages.NoOp ->
             ( model, Cmd.none )
 
-        Messages.ArrowDragPotentialStart buttons mousePosition ->
+        Messages.ArrowDragPotentialStart buttons mousePosition boundingBox ->
             case buttons > 0 of
                 True ->
-                    ( { model
-                        | stagedMessageAwaitingBoundingBox = Just (ArrowDragStart mousePosition)
-                        , currentEndControls = setArrowDragStarted model.currentEndControls
-                      }
-                    , (Ports.getClientBoundingBox "TargetSvg")
+                    ( placeArrowOnShotPlacer
+                        { model
+                            | currentEndControls =
+                                setArrowDragStartedWithBox
+                                    model.currentEndControls
+                                    boundingBox
+                            , stagedMessageAwaitingBoundingBox = Nothing
+                        }
+                        mousePosition
+                        boundingBox
+                    , Cmd.none
                     )
 
                 False ->
                     ( model, Cmd.none )
 
-        Messages.ArrowDragStart mousePosition boundingBox ->
-            ( placeArrowOnShotPlacer
-                { model
-                    | currentEndControls =
-                        setArrowDragStartedWithBox
-                            model.currentEndControls
-                            boundingBox
-                }
-                mousePosition
-                boundingBox
-            , Cmd.none
-            )
-
         Messages.ArrowDrag mousePosition ->
             ( placeArrowOnShotPlacer model mousePosition model.currentEndControls.boundingBox, Cmd.none )
 
-        Messages.ArrowDragEnd mousePosition ->
+        Messages.ArrowDragEnd mousePosition boundingBox ->
             ( model, Cmd.none )
 
         Messages.SelectArrow index ->
@@ -168,22 +170,29 @@ update msg model =
         Messages.DeselectArrow ->
             ( { model | currentEndControls = selectArrowIndex model.end.endEntries model.currentEndControls Nothing }, Cmd.none )
 
-        Messages.PlaceMouseCoor mousePosition ->
+        Messages.PlaceArrow mousePosition boundingBox ->
+            ( placeArrowOnShotPlacer model mousePosition boundingBox, Cmd.none )
+
+        Messages.StageMsgPartial messagePartial ->
             ( { model
-                | stagedMessageAwaitingBoundingBox = Just (PlaceArrow mousePosition)
+                | stagedMessageAwaitingBoundingBox = Just (messagePartial)
               }
             , (Ports.getClientBoundingBox "TargetSvg")
             )
 
-        Messages.PlaceArrow mousePosition boundingBox ->
-            ( placeArrowOnShotPlacer model mousePosition boundingBox, Cmd.none )
+        Messages.BoundingBoxResult maybeStagedMessage boundingBox ->
+            let
+                resultMessage =
+                    case maybeStagedMessage of
+                        Just messagePartial ->
+                            messagePartial boundingBox
 
-        Messages.BoundingBoxResult boundingBox ->
-            case model.stagedMessageAwaitingBoundingBox of
-                Just msgPartial ->
-                    update
-                        (msgPartial boundingBox)
-                        { model | stagedMessageAwaitingBoundingBox = Nothing }
+                        Nothing ->
+                            case model.stagedMessageAwaitingBoundingBox of
+                                Just messagePartial ->
+                                    messagePartial boundingBox
 
-                Nothing ->
-                    ( model, Cmd.none )
+                                Nothing ->
+                                    NoOp
+            in
+                update resultMessage { model | stagedMessageAwaitingBoundingBox = Nothing }

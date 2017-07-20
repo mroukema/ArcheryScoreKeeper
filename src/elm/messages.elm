@@ -1,16 +1,20 @@
-module Messages exposing (Msg(..))
+module Messages exposing (Msg(..), makeStagedMessage)
 
 import Types exposing (IntPosition, BoundingBox)
 
 
+makeStagedMessage : (IntPosition -> BoundingBox -> Msg) -> IntPosition -> Msg
+makeStagedMessage messagePartial intPosition =
+    StageMsgPartial (messagePartial intPosition)
+
+
 type Msg
     = NoOp
-    | ArrowDragPotentialStart Int IntPosition
-    | ArrowDragStart IntPosition BoundingBox
+    | ArrowDragPotentialStart Int IntPosition BoundingBox
     | ArrowDrag IntPosition
-    | ArrowDragEnd IntPosition
+    | ArrowDragEnd IntPosition BoundingBox
     | SelectArrow Int
     | DeselectArrow
-    | PlaceMouseCoor IntPosition
     | PlaceArrow IntPosition BoundingBox
-    | BoundingBoxResult BoundingBox
+    | StageMsgPartial (BoundingBox -> Msg)
+    | BoundingBoxResult (Maybe (BoundingBox -> Msg)) BoundingBox

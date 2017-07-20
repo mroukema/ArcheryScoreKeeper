@@ -3,6 +3,7 @@
   var app = Elm.Main.embed(mainNode);
 
 
+  console.log("Port = " + app.ports.boundingBoxResult);
   app.ports.getClientBoundingBox.subscribe(function(elementId) {
     var queriedElement = document.getElementById(elementId);
     console.log("getClientBoundingBox()");
