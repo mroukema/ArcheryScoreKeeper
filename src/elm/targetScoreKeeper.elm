@@ -19,6 +19,7 @@ import CurrentEndInputTarget
         , initialEnd
         , initialControlData
         , CurrentEndControlData
+        , End
         )
 import Types exposing (..)
 
@@ -42,7 +43,7 @@ main =
 
 type alias Model =
     { currentEndControls : CurrentEndControlData
-    , ends : Array CurrentEndInputTarget.End
+    , ends : Array End
     , stagedMessageAwaitingBoundingBox : Maybe (BoundingBox -> Msg)
     }
 
@@ -60,6 +61,7 @@ init =
     initialModel ! []
 
 
+getCurrentEndOrNewDeafult : CurrentEndControlData -> Array End -> End
 getCurrentEndOrNewDeafult currentEndControls ends =
     let
         currentEndIndex =
@@ -210,7 +212,8 @@ update msg model =
         Messages.DeselectArrow ->
             ( { model
                 | currentEndControls =
-                    selectArrowIndex (.endEntries (getCurrentEndOrNewDeafult model.currentEndControls model.ends))
+                    selectArrowIndex
+                        (.endEntries (getCurrentEndOrNewDeafult model.currentEndControls model.ends))
                         model.currentEndControls
                         Nothing
               }
