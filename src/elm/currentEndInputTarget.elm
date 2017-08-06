@@ -131,7 +131,7 @@ endEntryView end =
     div
         [ class "mdc-card__horizontal-block" ]
         (List.concat
-            [ [ endNumberSection <| toString <| end.endNumber ]
+            [ [ endNumberSection <| toString <| end.endNumber + 1 ]
             , List.map endEntryRadioButton (Array.toIndexedList end.endEntries)
             , [ endTotalSection <| toString <| totalEndEntries end.endEntries ]
             ]
