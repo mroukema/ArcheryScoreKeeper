@@ -2,6 +2,7 @@ module Main exposing (..)
 
 -- elm-lang
 
+import Array exposing (Array)
 import Html exposing (..)
 import Html.Attributes
 
@@ -41,7 +42,7 @@ main =
 
 type alias Model =
     { currentEndControls : CurrentEndControlData
-    , end : CurrentEndInputTarget.End
+    , ends : Array CurrentEndInputTarget.End
     , stagedMessageAwaitingBoundingBox : Maybe (BoundingBox -> Msg)
     }
 
@@ -49,7 +50,7 @@ type alias Model =
 initialModel : Model
 initialModel =
     { currentEndControls = initialControlData
-    , end = initialEnd 3
+    , ends = Array.fromList [ initialEnd 3 0 ]
     , stagedMessageAwaitingBoundingBox = Nothing
     }
 
@@ -59,22 +60,47 @@ init =
     initialModel ! []
 
 
+getCurrentEndOrNewDeafult currentEndControls ends =
+    let
+        currentEndIndex =
+            currentEndControls.currentEndIndex
+    in
+        case (Array.get currentEndIndex ends) of
+            Just end ->
+                end
+
+            Nothing ->
+                initialEnd 3 currentEndIndex
+
+
 
 -- View
 
 
 view : Model -> Html Msg
 view model =
-    div
-        [ Html.Attributes.class "mdc-layout-grid"
-        , Html.Attributes.id "targetScoreKeeper"
-        ]
-        [ div
-            [ Html.Attributes.class "mdc-layout-grid__inner" ]
-            [ CurrentEndInputTarget.view (CurrentEnd model.end model.currentEndControls) ]
+    let
+        currentEndIndex =
+            model.currentEndControls.currentEndIndex
+    in
+        div
+            [ Html.Attributes.class "mdc-layout-grid"
+            , Html.Attributes.id "targetScoreKeeper"
+            ]
+            [ div
+                [ Html.Attributes.class "mdc-layout-grid__inner" ]
+                [ CurrentEndInputTarget.view
+                    (CurrentEnd
+                        (getCurrentEndOrNewDeafult
+                            model.currentEndControls
+                            model.ends
+                        )
+                        model.currentEndControls
+                    )
+                ]
 
-        --, EndCard.view model.shots
-        ]
+            --, EndCard.view model.shots
+            ]
 
 
 debugModel : Model -> Html msg
@@ -103,13 +129,16 @@ placeArrowOnShotPlacer model mousePosition boundingBox =
         ( updatedEnd, updatedControls ) =
             (updateCurrentEnd
                 model.currentEndControls
-                model.end
+                (Maybe.withDefault
+                    (initialEnd 3 model.currentEndControls.currentEndIndex)
+                    (Array.get model.currentEndControls.currentEndIndex model.ends)
+                )
                 mousePosition
                 boundingBox
             )
     in
         { model
-            | end = updatedEnd
+            | ends = Array.set model.currentEndControls.currentEndIndex updatedEnd model.ends
             , currentEndControls = updatedControls
         }
 
@@ -168,10 +197,25 @@ update msg model =
             ( { model | currentEndControls = setArrowDragEnded model.currentEndControls }, Cmd.none )
 
         Messages.SelectArrow index ->
-            ( { model | currentEndControls = selectArrowIndex model.end.endEntries model.currentEndControls (Just index) }, Cmd.none )
+            ( { model
+                | currentEndControls =
+                    selectArrowIndex
+                        (.endEntries (getCurrentEndOrNewDeafult model.currentEndControls model.ends))
+                        model.currentEndControls
+                        (Just index)
+              }
+            , Cmd.none
+            )
 
         Messages.DeselectArrow ->
-            ( { model | currentEndControls = selectArrowIndex model.end.endEntries model.currentEndControls Nothing }, Cmd.none )
+            ( { model
+                | currentEndControls =
+                    selectArrowIndex (.endEntries (getCurrentEndOrNewDeafult model.currentEndControls model.ends))
+                        model.currentEndControls
+                        Nothing
+              }
+            , Cmd.none
+            )
 
         Messages.PlaceMouseCoor mousePosition ->
             ( { model

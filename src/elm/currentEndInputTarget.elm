@@ -40,6 +40,7 @@ type alias CurrentEndControlData =
     , viewBox : ViewBox
     , boundingBox : BoundingBox
     , dragInProgress : Bool
+    , currentEndIndex : Int
     }
 
 
@@ -54,11 +55,11 @@ initInitialShotList numShots =
     Array.repeat numShots Empty
 
 
-initialEnd : Int -> End
-initialEnd shotsPerEnd =
+initialEnd : Int -> Int -> End
+initialEnd shotsPerEnd endNumber =
     { endEntries = initInitialShotList shotsPerEnd
     , shotsPerEnd = shotsPerEnd
-    , endNumber = 1
+    , endNumber = endNumber
     }
 
 
@@ -69,6 +70,7 @@ initialControlData =
         (Types.ViewBox -45 -45 90 90)
         (Types.BoundingBox 0 0 0 0 0 0)
         False
+        0
 
 
 getShotsFromEnd : Array EndEntry -> List Shot
