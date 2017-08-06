@@ -56,7 +56,10 @@ shotPlacer model selectedArrowIndex arrowDragInProgress =
                   ]
                 , (List.map
                     (\( index, { arrow } ) ->
-                        Shot.arrow ( index, arrow ) (selectedArrowIndex_ == index)
+                        Shot.arrow
+                            ( index, arrow )
+                            (selectedArrowIndex_ == index)
+                            arrowDragInProgress
                     )
                     (selectedArrowLast
                         model

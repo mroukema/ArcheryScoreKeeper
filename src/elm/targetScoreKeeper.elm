@@ -124,6 +124,11 @@ setArrowDragStartedWithBox controls boundingBox =
     { controls | dragInProgress = True, boundingBox = boundingBox }
 
 
+setArrowDragEnded : CurrentEndControlData -> CurrentEndControlData
+setArrowDragEnded controls =
+    { controls | dragInProgress = False }
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -160,7 +165,7 @@ update msg model =
             ( placeArrowOnShotPlacer model mousePosition model.currentEndControls.boundingBox, Cmd.none )
 
         Messages.ArrowDragEnd mousePosition ->
-            ( model, Cmd.none )
+            ( { model | currentEndControls = setArrowDragEnded model.currentEndControls }, Cmd.none )
 
         Messages.SelectArrow index ->
             ( { model | currentEndControls = selectArrowIndex model.end.endEntries model.currentEndControls (Just index) }, Cmd.none )

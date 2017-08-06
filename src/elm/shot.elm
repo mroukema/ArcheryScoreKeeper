@@ -2,7 +2,7 @@ module Shot exposing (..)
 
 import Svg exposing (..)
 import Score exposing (Score)
-import Arrow exposing (ArrowSpec, arrowSpecToArrowSvg, arrowSpecToSelectedArrowSvg, defaultArrow)
+import Arrow exposing (ArrowSpec, arrowSpecToArrowSvg, arrowSpecToSelectedArrowSvg, arrowSpecToDragArrowSvg, defaultArrow)
 import Messages exposing (Msg)
 
 
@@ -12,11 +12,20 @@ type alias Shot =
     }
 
 
-arrow : ( Int, ArrowSpec ) -> Bool -> Svg Msg
-arrow indexedShot isSelected =
-    case isSelected of
-        True ->
-            arrowSpecToSelectedArrowSvg indexedShot
+arrow : ( Int, ArrowSpec ) -> Bool -> Bool -> Svg Msg
+arrow indexedShot isSelected isDragInProgress =
+    let
+        selectedArrow =
+            case isDragInProgress of
+                True ->
+                    arrowSpecToDragArrowSvg
 
-        False ->
-            arrowSpecToArrowSvg indexedShot
+                False ->
+                    arrowSpecToSelectedArrowSvg
+    in
+        case isSelected of
+            True ->
+                selectedArrow indexedShot
+
+            False ->
+                arrowSpecToArrowSvg indexedShot
