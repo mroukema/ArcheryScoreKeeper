@@ -22,6 +22,7 @@ import CurrentEndInputTarget
         , End
         )
 import Types exposing (..)
+import ScoreCard
 
 
 -- Main
@@ -101,7 +102,7 @@ view model =
                     )
                 ]
 
-            --, EndCard.view model.shots
+            --, ScoreCard.view model.ends
             ]
 
 
