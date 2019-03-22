@@ -6,9 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run elm-live",
-    "elm-live": "elm-live Main.elm -- --output=elm.js --debug",
+    "elm-live": "elm-live src/Main.elm -- --output=elm.js --debug",
     "elm-live-old": "elm-live src/elm/targetScoreKeeper.elm -- --output=elm.js --debug",
-    "elm-build": "elm make --output=elm.js --debug Main.elm",
+    "elm-build": "elm make --output=elm.js --debug src/Main.elm",
     "elm-build-old": "elm make --output=elm.js --debug src/elm/targetScoreKeeper.elm"
   },
   "repository": {
