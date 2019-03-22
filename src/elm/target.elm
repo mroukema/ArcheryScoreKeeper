@@ -1,4 +1,4 @@
-module Target exposing (Target, defaultScoringOptions, scorePos, target, translateClientToSvgCoordinates, viewBoxToAttributeString)
+module Target exposing (Target, defaultScoringOptions, scorePos, target, tenRingTarget, translateClientToSvgCoordinates, viewBoxToAttributeString)
 
 import Arrow
 import Score exposing (Score)
@@ -163,8 +163,8 @@ type alias TargetRingSpec =
     }
 
 
-tenRingTarget : TargetSpec
-tenRingTarget =
+tenRingSpec : TargetSpec
+tenRingSpec =
     [ TargetRingSpec 39.9 0.2 "white" "black" (Score "1" 1)
     , TargetRingSpec 35.9 0.2 "white" "black" (Score "2" 2)
     , TargetRingSpec 32 0.2 "black" "black" (Score "3" 3)
@@ -217,7 +217,15 @@ centerCrossHair =
 
 target : Target msg
 target =
-    { view = targetGenerator tenRingTarget
-    , spec = tenRingTarget
+    { view = targetGenerator tenRingSpec
+    , spec = tenRingSpec
+    , viewBox = ViewBox -45 -45 90 90
+    }
+
+
+tenRingTarget : Target msg
+tenRingTarget =
+    { view = targetGenerator tenRingSpec
+    , spec = tenRingSpec
     , viewBox = ViewBox -45 -45 90 90
     }
