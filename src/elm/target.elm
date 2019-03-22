@@ -15,21 +15,28 @@ import Types exposing (..)
 
 viewBoxToAttributeString : ViewBox -> String
 viewBoxToAttributeString viewBox =
-    fromFloat viewBox.left ++ " " ++ fromFloat viewBox.top ++ " " ++ fromFloat viewBox.width ++ " " ++ fromFloat viewBox.width
+    ""
+        ++ fromFloat viewBox.left
+        ++ " "
+        ++ fromFloat viewBox.top
+        ++ " "
+        ++ fromFloat viewBox.width
+        ++ " "
+        ++ fromFloat viewBox.width
 
 
 translateClientToSvgCoordinates : BoundingBox -> ViewBox -> IntPosition -> FloatPosition
-translateClientToSvgCoordinates boundingBox veiwBox clientPos =
+translateClientToSvgCoordinates boundingBox viewBox clientPos =
     { x =
         ((toFloat clientPos.x - boundingBox.left)
-            * (veiwBox.width / boundingBox.width)
+            * (viewBox.width / boundingBox.width)
         )
-            + veiwBox.left
+            + viewBox.left
     , y =
         ((toFloat clientPos.y - boundingBox.top)
-            * (veiwBox.height / boundingBox.height)
+            * (viewBox.height / boundingBox.height)
         )
-            + veiwBox.top
+            + viewBox.top
     }
 
 
@@ -105,7 +112,7 @@ targetScoreGreater targetSpec currentShot =
 withinRingBounds : LineBreakOption -> Float -> Arrow.ArrowSpec -> Bool
 withinRingBounds lineBreak targetRingRadius arrow =
     let
-        lineBreakDistanceCoorection =
+        lineBreakDistanceCorrection =
             case lineBreak of
                 Up ->
                     -1 * arrow.radius
@@ -116,7 +123,7 @@ withinRingBounds lineBreak targetRingRadius arrow =
                 Center ->
                     0
     in
-    targetRingRadius > (distanceFromCenter arrow.pos + lineBreakDistanceCoorection)
+    targetRingRadius > (distanceFromCenter arrow.pos + lineBreakDistanceCorrection)
 
 
 compareShot : Arrow.ArrowSpec -> Shot
@@ -185,13 +192,10 @@ tenRingSpec =
 
 targetGenerator : List TargetRingSpec -> Svg msg
 targetGenerator targetSpec =
-    Svg.g
-        []
-        (List.concat
-            [ List.map ringGenerator targetSpec
-            , [ centerCrossHair ]
-            ]
-        )
+    Svg.g [] <|
+        List.append
+            (List.map ringGenerator targetSpec)
+            [ centerCrossHair ]
 
 
 ringGenerator : TargetRingSpec -> Svg msg
