@@ -1,4 +1,4 @@
-module Types exposing (..)
+module Types exposing (BoundingBox, FloatPosition, IntPosition, ViewBox)
 
 
 type alias IntPosition =

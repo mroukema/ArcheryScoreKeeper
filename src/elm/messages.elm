@@ -1,6 +1,6 @@
 module Messages exposing (Msg(..))
 
-import Types exposing (IntPosition, BoundingBox)
+import Types exposing (BoundingBox, IntPosition)
 
 
 type Msg

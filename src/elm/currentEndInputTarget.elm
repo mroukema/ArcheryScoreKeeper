@@ -1,23 +1,21 @@
-module CurrentEndInputTarget exposing (..)
+module CurrentEndInputTarget exposing (CurrentEnd, CurrentEndControlData, End, EndEntry(..), addEntryValue, appendIfIsShot, currentEnd, endEntryRadioButton, endEntryView, endNumberSection, endTotalSection, firstEmptyIndexOrCurrent, getShotsFromEnd, initInitialShotList, initialControlData, initialEnd, selectArrowIndex, totalEndEntries, updateCurrentEnd, view)
 
 -- elm-lang imports
-
-import Array exposing (Array)
-import Html exposing (..)
-import Html.Attributes exposing (class)
-import Svg exposing (svg)
-import Svg.Attributes exposing (version, width, height, viewBox, id, viewBox, path, fill, stroke, d)
-
-
 -- user iports
 
-import Messages exposing (Msg)
-import Target exposing (..)
-import ShotPlacer exposing (shotPlacer)
-import Shot exposing (Shot)
-import Target exposing (..)
+import Array exposing (Array)
 import Arrow
+import Html exposing (..)
+import Html.Attributes exposing (class)
+import Messages exposing (Msg)
+import Shot exposing (Shot)
+import ShotPlacer exposing (shotPlacer)
+import String exposing (fromFloat, fromInt)
+import Svg exposing (svg)
+import Svg.Attributes exposing (d, fill, height, id, path, stroke, version, viewBox, width)
+import Target exposing (..)
 import Types exposing (..)
+
 
 
 -- Model
@@ -106,7 +104,7 @@ view model =
                 [ target.view
                 , shotPlacer
                     (List.indexedMap
-                        (,)
+                        (\a b -> ( a, b ))
                         (getShotsFromEnd <| model.endData.endEntries)
                     )
                     model.controlData.selectedArrowIndex
@@ -131,9 +129,9 @@ endEntryView end =
     div
         [ class "mdc-card__horizontal-block" ]
         (List.concat
-            [ [ endNumberSection <| toString <| end.endNumber + 1 ]
+            [ [ endNumberSection <| fromInt <| end.endNumber + 1 ]
             , List.map endEntryRadioButton (Array.toIndexedList end.endEntries)
-            , [ endTotalSection <| toString <| totalEndEntries end.endEntries ]
+            , [ endTotalSection <| fromInt <| totalEndEntries end.endEntries ]
             ]
         )
 
@@ -173,12 +171,12 @@ endEntryRadioButton ( index, endEntry ) =
         FilledEntry shot ->
             section
                 [ class "mdc-card__media" ]
-                [ h2 [ id (toString index) ] [ text shot.score.label ] ]
+                [ h2 [ id (fromInt index) ] [ text shot.score.label ] ]
 
         Empty ->
             section
                 [ class "mdc-card__media" ]
-                [ h2 [ id (toString index) ] [ text "-" ] ]
+                [ h2 [ id (fromInt index) ] [ text "-" ] ]
 
 
 
@@ -212,40 +210,38 @@ firstEmptyIndexOrCurrent endEntries current =
                 Nothing
                 (Array.toIndexedList endEntries)
     in
-        case (emptyEntryIndex) of
-            Just index ->
-                Just index
+    case emptyEntryIndex of
+        Just index ->
+            Just index
 
-            Nothing ->
-                current
+        Nothing ->
+            current
 
 
 updateCurrentEnd : CurrentEndControlData -> End -> IntPosition -> BoundingBox -> ( End, CurrentEndControlData )
-updateCurrentEnd controlData currentEnd mousePos boundingBox =
+updateCurrentEnd controlData currentEndData mousePos boundingBox =
     let
         shot =
-            (Target.scorePos
+            Target.scorePos
                 Target.defaultScoringOptions
                 target.spec
                 (Arrow.defaultArrow
                     (translateClientToSvgCoordinates boundingBox controlData.viewBox mousePos)
                 )
-            )
 
         updatedEntries =
             case controlData.selectedArrowIndex of
                 Just index ->
-                    (Array.set
+                    Array.set
                         index
                         (FilledEntry shot)
-                        currentEnd.endEntries
-                    )
+                        currentEndData.endEntries
 
                 Nothing ->
-                    currentEnd.endEntries
+                    currentEndData.endEntries
     in
-        ( { currentEnd
-            | endEntries = updatedEntries
-          }
-        , { controlData | selectedArrowIndex = firstEmptyIndexOrCurrent updatedEntries controlData.selectedArrowIndex }
-        )
+    ( { currentEndData
+        | endEntries = updatedEntries
+      }
+    , { controlData | selectedArrowIndex = firstEmptyIndexOrCurrent updatedEntries controlData.selectedArrowIndex }
+    )

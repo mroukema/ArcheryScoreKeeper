@@ -1,7 +1,11 @@
 (function () {
-  var mainNode = document.getElementById('elmMain')
-  var app = Elm.Main.embed(mainNode);
-
+  var app = Elm.Main.init({
+      node: document.getElementById('elmMain'),
+      flags:
+          [ "Galactic Empire"
+          , "http://localhost:7500/ui/multi-site/dashboard/map"
+          , "http://localhost:7500/ui/multi-site/dashboard/map"
+          ]
 
   app.ports.getClientBoundingBox.subscribe(function(elementId) {
     var queriedElement = document.getElementById(elementId);

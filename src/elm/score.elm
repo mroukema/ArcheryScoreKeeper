@@ -1,4 +1,4 @@
-module Score exposing (..)
+module Score exposing (Score)
 
 
 type alias Score =

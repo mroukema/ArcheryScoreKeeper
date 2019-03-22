@@ -1,6 +1,7 @@
-port module Ports exposing (..)
+port module Ports exposing (boundingBoxResult, getClientBoundingBox)
 
 import Types exposing (BoundingBox)
+
 
 
 -- port for sending strings out to JavaScript

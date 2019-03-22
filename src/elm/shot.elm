@@ -1,9 +1,9 @@
-module Shot exposing (..)
+module Shot exposing (Shot, arrow)
 
-import Svg exposing (..)
-import Score exposing (Score)
-import Arrow exposing (ArrowSpec, arrowSpecToArrowSvg, arrowSpecToSelectedArrowSvg, arrowSpecToDragArrowSvg, defaultArrow)
+import Arrow exposing (ArrowSpec, arrowSpecToArrowSvg, arrowSpecToDragArrowSvg, arrowSpecToSelectedArrowSvg, defaultArrow)
 import Messages exposing (Msg)
+import Score exposing (Score)
+import Svg exposing (..)
 
 
 type alias Shot =
@@ -23,9 +23,9 @@ arrow indexedShot isSelected isDragInProgress =
                 False ->
                     arrowSpecToSelectedArrowSvg
     in
-        case isSelected of
-            True ->
-                selectedArrow indexedShot
+    case isSelected of
+        True ->
+            selectedArrow indexedShot
 
-            False ->
-                arrowSpecToArrowSvg indexedShot
+        False ->
+            arrowSpecToArrowSvg indexedShot

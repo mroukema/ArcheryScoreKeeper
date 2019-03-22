@@ -1,15 +1,15 @@
-module Arrow exposing (..)
-
-import Svg exposing (..)
-import Svg.Attributes exposing (..)
-import Svg.Events exposing (..)
-import Json.Decode as Decode
-
+module Arrow exposing (ArrowSpec, arrow, arrowBase, arrowSpecToArrowSvg, arrowSpecToDragArrowSvg, arrowSpecToSelectedArrowSvg, arrowSvgView, defaultArrow, deselectOnClick, deselectOnMouseUp, endArrowDragOnMouseUp, offsetToPosition, selectOnClick, selectionHighlight, startDragOnPressedMouseMove)
 
 -- user imports
 
+import Json.Decode as Decode
 import Messages exposing (..)
+import String exposing (fromFloat)
+import Svg exposing (..)
+import Svg.Attributes exposing (..)
+import Svg.Events exposing (..)
 import Types exposing (..)
+
 
 
 -- Model
@@ -34,7 +34,7 @@ arrowSvgView : Float -> Bool -> List (Svg Messages.Msg)
 arrowSvgView radius selected =
     case selected of
         True ->
-            List.concat [ (arrowBase radius), (selectionHighlight radius) ]
+            List.concat [ arrowBase radius, selectionHighlight radius ]
 
         False ->
             arrowBase radius
@@ -43,7 +43,7 @@ arrowSvgView radius selected =
 arrowSpecToArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
 arrowSpecToArrowSvg ( index, arrowSpec ) =
     Svg.g
-        [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
+        [ transform ("translate(" ++ fromFloat arrowSpec.pos.x ++ ", " ++ fromFloat arrowSpec.pos.y ++ ")")
         , selectOnClick index
         ]
         (arrowSvgView arrowSpec.radius False)
@@ -52,7 +52,7 @@ arrowSpecToArrowSvg ( index, arrowSpec ) =
 arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
 arrowSpecToSelectedArrowSvg ( index, arrowSpec ) =
     Svg.g
-        [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
+        [ transform ("translate(" ++ fromFloat arrowSpec.pos.x ++ ", " ++ fromFloat arrowSpec.pos.y ++ ")")
         , deselectOnClick
         , startDragOnPressedMouseMove
         ]
@@ -62,7 +62,7 @@ arrowSpecToSelectedArrowSvg ( index, arrowSpec ) =
 arrowSpecToDragArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
 arrowSpecToDragArrowSvg ( index, arrowSpec ) =
     Svg.g
-        [ transform ("translate(" ++ (toString arrowSpec.pos.x) ++ ", " ++ (toString arrowSpec.pos.y) ++ ")")
+        [ transform ("translate(" ++ fromFloat arrowSpec.pos.x ++ ", " ++ fromFloat arrowSpec.pos.y ++ ")")
         , endArrowDragOnMouseUp
         , deselectOnMouseUp
         , on "mousemove" (Decode.map ArrowDrag offsetToPosition)
@@ -75,7 +75,7 @@ selectionHighlight radius =
     [ Svg.circle
         [ cx "0"
         , cy "0"
-        , r (radius * 1.65 |> toString)
+        , r (radius * 1.65 |> fromFloat)
         , fill "blue"
         , opacity ".4"
         , id "selectedHighlight"
@@ -89,10 +89,10 @@ arrowBase radius =
     [ Svg.circle
         [ cx "0"
         , cy "0"
-        , r (toString radius)
+        , r (fromFloat radius)
         , fill "white"
         , stroke "black"
-        , strokeWidth (toString 0.1)
+        , strokeWidth (fromFloat 0.1)
         , id "arrowCircle"
         ]
         []
@@ -102,7 +102,7 @@ arrowBase radius =
 
 arrow : FloatPosition -> Svg Messages.Msg
 arrow pos =
-    arrowSpecToArrowSvg ( 0, (defaultArrow pos) )
+    arrowSpecToArrowSvg ( 0, defaultArrow pos )
 
 
 

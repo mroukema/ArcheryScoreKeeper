@@ -1,36 +1,36 @@
-module Main exposing (..)
+module Main exposing (Model, getCurrentEndOrNewDeafult, init, initialModel, main, placeArrowOnShotPlacer, setArrowDragEnded, setArrowDragStarted, setArrowDragStartedWithBox, subscriptions, update, view)
 
 -- elm-lang
-
-import Array exposing (Array)
-import Html exposing (..)
-import Html.Attributes
-
-
 -- user
 
-import Messages exposing (..)
-import Ports
+import Array exposing (Array)
+import Browser
 import CurrentEndInputTarget
     exposing
-        ( updateCurrentEnd
-        , CurrentEnd
-        , selectArrowIndex
-        , initialEnd
-        , initialControlData
+        ( CurrentEnd
         , CurrentEndControlData
         , End
+        , initialControlData
+        , initialEnd
+        , selectArrowIndex
+        , updateCurrentEnd
         )
-import Types exposing (..)
+import Html exposing (..)
+import Html.Attributes
+import Messages exposing (..)
+import Ports
 import ScoreCard
+import String exposing (fromFloat, fromInt)
+import Types exposing (..)
+
 
 
 -- Main
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
+    Browser.element
         { init = init
         , view = view
         , update = update
@@ -57,9 +57,11 @@ initialModel =
     }
 
 
-init : ( Model, Cmd msg )
-init =
-    initialModel ! []
+init : () -> ( Model, Cmd msg )
+init _ =
+    ( initialModel
+    , Cmd.none
+    )
 
 
 getCurrentEndOrNewDeafult : CurrentEndControlData -> Array End -> End
@@ -68,12 +70,12 @@ getCurrentEndOrNewDeafult currentEndControls ends =
         currentEndIndex =
             currentEndControls.currentEndIndex
     in
-        case (Array.get currentEndIndex ends) of
-            Just end ->
-                end
+    case Array.get currentEndIndex ends of
+        Just end ->
+            end
 
-            Nothing ->
-                initialEnd 3 currentEndIndex
+        Nothing ->
+            initialEnd 3 currentEndIndex
 
 
 
@@ -86,32 +88,30 @@ view model =
         currentEndIndex =
             model.currentEndControls.currentEndIndex
     in
-        div
-            [ Html.Attributes.class "mdc-layout-grid"
-            , Html.Attributes.id "targetScoreKeeper"
-            ]
-            [ div
-                [ Html.Attributes.class "mdc-layout-grid__inner" ]
-                [ CurrentEndInputTarget.view
-                    (CurrentEnd
-                        (getCurrentEndOrNewDeafult
-                            model.currentEndControls
-                            model.ends
-                        )
+    div
+        [ Html.Attributes.class "mdc-layout-grid"
+        , Html.Attributes.id "targetScoreKeeper"
+        ]
+        [ div
+            [ Html.Attributes.class "mdc-layout-grid__inner" ]
+            [ CurrentEndInputTarget.view
+                (CurrentEnd
+                    (getCurrentEndOrNewDeafult
                         model.currentEndControls
+                        model.ends
                     )
-                ]
-
-            --, ScoreCard.view model.ends
+                    model.currentEndControls
+                )
             ]
 
-
-debugModel : Model -> Html msg
-debugModel model =
-    Html.text (toString model)
+        --, ScoreCard.view model.ends
+        ]
 
 
 
+-- debugModel : Model -> Html msg
+-- debugModel model =
+--     Html.text (toString model)
 -- Subscriptions
 
 
@@ -130,7 +130,7 @@ placeArrowOnShotPlacer : Model -> IntPosition -> BoundingBox -> Model
 placeArrowOnShotPlacer model mousePosition boundingBox =
     let
         ( updatedEnd, updatedControls ) =
-            (updateCurrentEnd
+            updateCurrentEnd
                 model.currentEndControls
                 (Maybe.withDefault
                     (initialEnd 3 model.currentEndControls.currentEndIndex)
@@ -138,12 +138,11 @@ placeArrowOnShotPlacer model mousePosition boundingBox =
                 )
                 mousePosition
                 boundingBox
-            )
     in
-        { model
-            | ends = Array.set model.currentEndControls.currentEndIndex updatedEnd model.ends
-            , currentEndControls = updatedControls
-        }
+    { model
+        | ends = Array.set model.currentEndControls.currentEndIndex updatedEnd model.ends
+        , currentEndControls = updatedControls
+    }
 
 
 setArrowDragStarted : CurrentEndControlData -> CurrentEndControlData
@@ -174,7 +173,7 @@ update msg model =
                         | stagedMessageAwaitingBoundingBox = Just (ArrowDragStart mousePosition)
                         , currentEndControls = setArrowDragStarted model.currentEndControls
                       }
-                    , (Ports.getClientBoundingBox "TargetSvg")
+                    , Ports.getClientBoundingBox "TargetSvg"
                     )
 
                 False ->
@@ -225,7 +224,7 @@ update msg model =
             ( { model
                 | stagedMessageAwaitingBoundingBox = Just (PlaceArrow mousePosition)
               }
-            , (Ports.getClientBoundingBox "TargetSvg")
+            , Ports.getClientBoundingBox "TargetSvg"
             )
 
         Messages.PlaceArrow mousePosition boundingBox ->

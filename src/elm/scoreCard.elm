@@ -1,15 +1,15 @@
-module ScoreCard exposing (..)
-
-import Array exposing (Array)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-
+module ScoreCard exposing (Model, addEntryValue, endEntry, endNumberView, endTotalView, extractScoresFromShots, individualScoresElem, scoreEntry, scoreEntryView, sumEnd, totalElem, totalEndEntries, view)
 
 -- User Imports
 
+import Array exposing (Array)
 import CurrentEndInputTarget exposing (..)
-import Shot exposing (..)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Score exposing (..)
+import Shot exposing (..)
+import String exposing (fromFloat, fromInt)
+
 
 
 -- Model
@@ -37,7 +37,7 @@ view : Model -> Html msg
 view model =
     Html.div [ class "mdc-layout-grid__inner" ]
         [ Html.div
-            [ (class " mdc-card mdc-layout-grid__cell mdc-layout-grid__cell--span-8") ]
+            [ class " mdc-card mdc-layout-grid__cell mdc-layout-grid__cell--span-8" ]
             (List.map
                 endEntry
                 (Array.toList model)
@@ -52,17 +52,16 @@ view model =
 endEntry : End -> Html msg
 endEntry end =
     Html.div
-        [ (class "mdc-card__horizontal-block ") ]
+        [ class "mdc-card__horizontal-block " ]
         [ ul
             []
             (List.concat
                 [ [ endNumberView end.endNumber ]
-                , (List.map
+                , List.map
                     scoreEntryView
                     (Array.toList end.endEntries)
-                  )
                 , [ totalEndEntries end.endEntries
-                        |> toString
+                        |> fromInt
                         |> endTotalView
                   ]
                 ]
@@ -92,12 +91,12 @@ addEntryValue entryA sum =
 
 endNumberView : Int -> Html msg
 endNumberView endNumber =
-    li [ class "ask-horizontal-list" ] [ text <| toString endNumber ]
+    li [ class "ask-horizontal-list" ] [ text <| fromInt endNumber ]
 
 
 scoreEntryView : EndEntry -> Html msg
-scoreEntryView endEntry =
-    case endEntry of
+scoreEntryView endEntryData =
+    case endEntryData of
         FilledEntry shot ->
             li [ class "ask-horizontal-list" ] [ text shot.score.label ]
 
@@ -108,19 +107,19 @@ scoreEntryView endEntry =
 individualScoresElem : List Shot -> Html msg
 individualScoresElem scores =
     Html.span
-        [ (class "scoresContainer") ]
+        [ class "scoresContainer" ]
         (List.map scoreEntry scores)
 
 
 totalElem : Int -> Html msg
 totalElem sum =
     Html.span
-        [ (class "endTotal") ]
-        [ h3 [] [ text (toString sum) ] ]
+        [ class "endTotal" ]
+        [ h3 [] [ text (fromInt sum) ] ]
 
 
 scoreEntry : Shot -> Html msg
 scoreEntry shot =
     Html.section
-        [ (class "scoreEntry") ]
+        [ class "scoreEntry" ]
         [ h3 [] [ text shot.score.label ] ]

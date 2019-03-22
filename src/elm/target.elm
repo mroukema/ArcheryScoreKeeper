@@ -1,11 +1,13 @@
-module Target exposing (target, Target, viewBoxToAttributeString, translateClientToSvgCoordinates, scorePos, defaultScoringOptions)
+module Target exposing (Target, defaultScoringOptions, scorePos, target, translateClientToSvgCoordinates, viewBoxToAttributeString)
 
+import Arrow
+import Score exposing (Score)
+import Shot exposing (Shot)
+import String exposing (fromFloat, fromInt)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import Score exposing (Score)
-import Arrow
-import Shot exposing (Shot)
 import Types exposing (..)
+
 
 
 --Model
@@ -13,18 +15,18 @@ import Types exposing (..)
 
 viewBoxToAttributeString : ViewBox -> String
 viewBoxToAttributeString viewBox =
-    (toString viewBox.left) ++ " " ++ (toString viewBox.top) ++ " " ++ (toString viewBox.width) ++ " " ++ (toString viewBox.width)
+    fromFloat viewBox.left ++ " " ++ fromFloat viewBox.top ++ " " ++ fromFloat viewBox.width ++ " " ++ fromFloat viewBox.width
 
 
 translateClientToSvgCoordinates : BoundingBox -> ViewBox -> IntPosition -> FloatPosition
 translateClientToSvgCoordinates boundingBox veiwBox clientPos =
     { x =
-        (((toFloat clientPos.x) - boundingBox.left)
+        ((toFloat clientPos.x - boundingBox.left)
             * (veiwBox.width / boundingBox.width)
         )
             + veiwBox.left
     , y =
-        (((toFloat clientPos.y) - boundingBox.top)
+        ((toFloat clientPos.y - boundingBox.top)
             * (veiwBox.height / boundingBox.height)
         )
             + veiwBox.top
@@ -53,8 +55,8 @@ defaultScoringOptions =
 
 
 scorePos : ScoringOptions -> TargetSpec -> Arrow.ArrowSpec -> Shot
-scorePos options target arrow =
-    List.foldr (foldOp options) (compareShot arrow) target
+scorePos options targetSpec arrow =
+    List.foldr (foldOp options) (compareShot arrow) targetSpec
 
 
 foldOp : ScoringOptions -> TargetRingSpec -> Shot -> Shot
@@ -63,15 +65,15 @@ foldOp options targetRingSpec currentShot =
         lineBreak =
             getLineBreakOptionForCurrentRing options targetRingSpec
     in
-        case
-            (withinRingBounds lineBreak targetRingSpec.radius currentShot.arrow)
-                && (targetScoreGreater targetRingSpec currentShot)
-        of
-            True ->
-                { currentShot | score = targetRingSpec.score }
+    case
+        withinRingBounds lineBreak targetRingSpec.radius currentShot.arrow
+            && targetScoreGreater targetRingSpec currentShot
+    of
+        True ->
+            { currentShot | score = targetRingSpec.score }
 
-            False ->
-                currentShot
+        False ->
+            currentShot
 
 
 getLineBreakOptionForCurrentRing : ScoringOptions -> TargetRingSpec -> LineBreakOption
@@ -80,12 +82,14 @@ getLineBreakOptionForCurrentRing options targetRingSpec =
         "X" ->
             if options.innerXs then
                 Down
+
             else
                 options.lineBreak
 
         "10" ->
             if options.inner10s then
                 Down
+
             else
                 options.lineBreak
 
@@ -112,7 +116,7 @@ withinRingBounds lineBreak targetRingRadius arrow =
                 Center ->
                     0
     in
-        targetRingRadius > ((distanceFromCenter arrow.pos) + lineBreakDistanceCoorection)
+    targetRingRadius > (distanceFromCenter arrow.pos + lineBreakDistanceCoorection)
 
 
 compareShot : Arrow.ArrowSpec -> Shot
@@ -184,7 +188,7 @@ targetGenerator targetSpec =
     Svg.g
         []
         (List.concat
-            [ (List.map ringGenerator targetSpec)
+            [ List.map ringGenerator targetSpec
             , [ centerCrossHair ]
             ]
         )
@@ -199,10 +203,10 @@ ringSpecToAttributeList : TargetRingSpec -> List (Attribute msg)
 ringSpecToAttributeList ringSpec =
     [ cx "0"
     , cy "0"
-    , r (toString ringSpec.radius)
+    , r (fromFloat ringSpec.radius)
     , fill ringSpec.ringColor
     , stroke ringSpec.lineColor
-    , strokeWidth (toString ringSpec.lineThickness)
+    , strokeWidth (fromFloat ringSpec.lineThickness)
     ]
 
 

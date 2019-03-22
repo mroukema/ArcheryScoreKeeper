@@ -1,21 +1,27 @@
-module ShotPlacer exposing (..)
+module ShotPlacer exposing (isSelectedArrow, offsetToPosition, placeArrowOnClick, selectedArrowLast, shotPlacer)
 
 -- elm-lang
+-- user
 
+import Json.Decode as Decode
+import Messages exposing (..)
+import Shot exposing (Shot)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
-import Mouse exposing (..)
-import Json.Decode as Decode
 
-
--- user
-
-import Messages exposing (..)
-import Shot exposing (Shot)
 
 
 -- Model
+
+
+type alias Position =
+    { x : Int
+    , y : Int
+    }
+
+
+
 -- View
 
 
@@ -38,36 +44,35 @@ shotPlacer model selectedArrowIndex arrowDragInProgress =
                 False ->
                     ( "mousedown", PlaceMouseCoor )
     in
-        Svg.g
-            [ id "group" ]
-            (List.concat
-                [ [ Svg.rect
-                        [ x "-50%"
-                        , y "-50%"
-                        , width "100%"
-                        , height "100%"
-                        , fillOpacity "0"
-                        , on htmlEvent (Decode.map messageType offsetToPosition)
+    Svg.g
+        [ id "group" ]
+        (List.concat
+            [ [ Svg.rect
+                    [ x "-50%"
+                    , y "-50%"
+                    , width "100%"
+                    , height "100%"
+                    , fillOpacity "0"
+                    , on htmlEvent (Decode.map messageType offsetToPosition)
 
-                        --, placeArrowOnClick (Messages.PlaceMouseCoor)
-                        , id "ShotPlacer"
-                        ]
-                        []
-                  ]
-                , (List.map
-                    (\( index, { arrow } ) ->
-                        Shot.arrow
-                            ( index, arrow )
-                            (selectedArrowIndex_ == index)
-                            arrowDragInProgress
-                    )
-                    (selectedArrowLast
-                        model
-                        selectedArrowIndex_
-                    )
-                  )
-                ]
-            )
+                    --, placeArrowOnClick (Messages.PlaceMouseCoor)
+                    , id "ShotPlacer"
+                    ]
+                    []
+              ]
+            , List.map
+                (\( index, { arrow } ) ->
+                    Shot.arrow
+                        ( index, arrow )
+                        (selectedArrowIndex_ == index)
+                        arrowDragInProgress
+                )
+                (selectedArrowLast
+                    model
+                    selectedArrowIndex_
+                )
+            ]
+        )
 
 
 isSelectedArrow : Int -> ( Int, Shot ) -> Bool
@@ -81,14 +86,14 @@ selectedArrowLast indexedShots currentIndex =
         ( selectedShotList, notSelected ) =
             List.partition (isSelectedArrow currentIndex) indexedShots
     in
-        List.concat [ notSelected, selectedShotList ]
+    List.concat [ notSelected, selectedShotList ]
 
 
 
 -- Update
 
 
-placeArrowOnClick : (Mouse.Position -> value) -> Attribute value
+placeArrowOnClick : (Position -> value) -> Attribute value
 placeArrowOnClick msg =
     on "mousedown"
         (Decode.map
@@ -97,6 +102,6 @@ placeArrowOnClick msg =
         )
 
 
-offsetToPosition : Decode.Decoder Mouse.Position
+offsetToPosition : Decode.Decoder Position
 offsetToPosition =
-    Decode.map2 Mouse.Position (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int)
+    Decode.map2 Position (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int)

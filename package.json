@@ -1,0 +1,22 @@
+{
+  "name": "archeryscorekeeper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npm run elm-live",
+    "elm-live": "elm-live src/elm/targetScoreKeeper.elm -- --output=elm.js --debug",
+    "elm-build": "elm make --output=elm.js --debug src/elm/targetScoreKeeper.elm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mroukema/ArcheryScoreKeeper.git"
+  },
+  "author": "Mark Roukema",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mroukema/ArcheryScoreKeeper/issues"
+  },
+  "homepage": "https://github.com/mroukema/ArcheryScoreKeeper#readme"
+}
