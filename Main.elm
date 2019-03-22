@@ -3,13 +3,14 @@ module Main exposing (main)
 import Browser
 import Browser.Dom as Dom
 import Browser.Events exposing (onResize)
-import Element exposing (fill, height, width)
+import Element exposing (fill, height, text, width)
 import Element.Background as Background
 import Element.Font as Font
 import Element.Input as Input
 import Html
+import Html.Attributes as HtmlAttr
 import Svg exposing (svg)
-import Svg.Attributes as Attr
+import Svg.Attributes as SvgAttr
 import Target exposing (tenRingTarget)
 import Task
 
@@ -92,18 +93,45 @@ subscriptions model =
 
 
 view model =
+    Html.div []
+        [ Html.div [ HtmlAttr.style "position" "absolute" ] [ targetView model ]
+        , Html.div [ HtmlAttr.style "position" "absolute" ] [ scorecard ]
+        ]
+
+
+targetView model =
     let
         size =
             Element.px <| min (Tuple.first model) (Tuple.second model)
     in
     svg
-        [ Attr.version "1.1"
-        , Attr.width "100%"
-        , Attr.height "100%"
-        , Attr.viewBox (Target.viewBoxToAttributeString tenRingTarget.viewBox)
-        , Attr.id "TargetSvg"
+        [ SvgAttr.version "1.1"
+        , SvgAttr.width "100%"
+        , SvgAttr.height "100%"
+        , SvgAttr.viewBox <| Target.viewBoxToAttributeString tenRingTarget.viewBox
+        , SvgAttr.id "TargetSvg"
         ]
         [ tenRingTarget.view ]
         |> Element.html
         |> Element.el [ height size, width size ]
         |> Element.layout []
+
+
+scorecard =
+    Element.column [ Element.spacing 12 ]
+        [ scoringEnd "#1 :   10   8   5"
+        , scoringEnd "#2 :    9   8   8"
+        , scoringEnd "#3 :    9   8   8"
+        , scoringEnd "#4 :   10   9   8"
+        , scoringEnd "#5 :    X  10   9"
+        , scoringEnd "#6 :   10   8   8"
+        ]
+        |> Element.layout []
+
+
+scoringEnd end =
+    Element.row
+        [ Background.color <|
+            Element.rgba255 180 212 212 0.7
+        ]
+        [ Element.el [] (text end) ]
