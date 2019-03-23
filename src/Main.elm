@@ -3,11 +3,12 @@ module Main exposing (main)
 import Browser
 import Browser.Dom as Dom
 import Browser.Events exposing (onResize)
-import Element exposing (fill, height, text, width)
+import Dict exposing (Dict)
+import Element exposing (Element, fill, height, px, rgba255, text, width)
 import Element.Background as Background
 import Element.Font as Font
 import Element.Input as Input
-import Html
+import Html exposing (Html)
 import Html.Attributes as HtmlAttr
 import Svg exposing (svg)
 import Svg.Attributes as SvgAttr
@@ -23,9 +24,9 @@ main : Program () Model Msg
 main =
     Browser.element
         { init = init
-        , view = view
-        , update = update
         , subscriptions = subscriptions
+        , update = update
+        , view = view
         }
 
 
@@ -41,16 +42,42 @@ init _ =
 type Msg
     = NoOp
     | WindowResize Int Int
-    | Viewport Dom.Viewport
+    | ViewportResult Dom.Viewport
 
 
 type alias Model =
-    ( Int, Int )
+    { viewport : Maybe Dom.Viewport
+    , scorecard : Scorecard
+    }
 
 
 initialModel : Model
 initialModel =
-    ( 0, 0 )
+    Model
+        Nothing
+        (Dict.fromList
+            [ ( 1, endFromScores [ Score "10" 10, Score "9" 9, Score "9" 9 ] )
+            , ( 2, endFromScores [ Score "X" 10, Score "9" 9, Score "9" 9 ] )
+            , ( 3, endFromScores [ Score "X" 10, Score "10" 10, Score "9" 9 ] )
+            , ( 4, endFromScores [ Score "10" 10, Score "10" 10, Score "8" 8 ] )
+            , ( 5, endFromScores [ Score "9" 10, Score "9" 10, Score "9" 8 ] )
+            , ( 6, endFromScores [ Score "X" 10, Score "10" 10, Score "9" 8 ] )
+            ]
+        )
+
+
+type alias Score =
+    { label : String
+    , value : Int
+    }
+
+
+type alias Scorecard =
+    Dict Int End
+
+
+type alias End =
+    Dict Int Score
 
 
 
@@ -62,22 +89,26 @@ update msg model =
         WindowResize x y ->
             ( model, getViewport )
 
-        Viewport viewport ->
-            let
-                width =
-                    viewport.viewport.width
-
-                height =
-                    viewport.viewport.height
-            in
-            ( ( floor width, floor height ), Cmd.none )
+        ViewportResult viewport ->
+            ( { model | viewport = Just viewport }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
 
 
 getViewport =
-    Task.perform Viewport Dom.getViewport
+    Task.perform ViewportResult Dom.getViewport
+
+
+endFromScores : List Score -> End
+endFromScores scores =
+    let
+        scoreIndices =
+            List.range 1 <| List.length scores
+    in
+    scores
+        |> List.map2 Tuple.pair scoreIndices
+        |> Dict.fromList
 
 
 
@@ -92,17 +123,32 @@ subscriptions model =
 --  View
 
 
+view : Model -> Html Msg
 view model =
     Html.div []
-        [ Html.div [ HtmlAttr.style "position" "absolute" ] [ targetView model ]
-        , Html.div [ HtmlAttr.style "position" "absolute" ] [ scorecard ]
+        [ Html.div
+            [ HtmlAttr.style "position" "absolute" ]
+            [ Element.layout [] <| targetElement model ]
+        , Html.div
+            [ HtmlAttr.style "position" "absolute" ]
+            [ Element.layout [] <| targetScorecard model.scorecard ]
         ]
 
 
-targetView model =
+targetElement : Model -> Element msg
+targetElement model =
     let
         size =
-            Element.px <| min (Tuple.first model) (Tuple.second model)
+            case model.viewport of
+                Just value ->
+                    let
+                        viewport =
+                            value.viewport
+                    in
+                    min (floor viewport.width) (floor viewport.height) |> px
+
+                Nothing ->
+                    0 |> px
     in
     svg
         [ SvgAttr.version "1.1"
@@ -111,27 +157,40 @@ targetView model =
         , SvgAttr.viewBox <| Target.viewBoxToAttributeString tenRingTarget.viewBox
         , SvgAttr.id "TargetSvg"
         ]
-        [ tenRingTarget.view ]
+        [ tenRingTarget.view
+        ]
         |> Element.html
         |> Element.el [ height size, width size ]
-        |> Element.layout []
 
 
-scorecard =
-    Element.column [ Element.spacing 12 ]
-        [ scoringEnd "#1 :   10   8   5"
-        , scoringEnd "#2 :    9   8   8"
-        , scoringEnd "#3 :    9   8   8"
-        , scoringEnd "#4 :   10   9   8"
-        , scoringEnd "#5 :    X  10   9"
-        , scoringEnd "#6 :   10   8   8"
-        ]
-        |> Element.layout []
+targetScorecard : Scorecard -> Element msg
+targetScorecard ends =
+    ends
+        |> Dict.toList
+        |> List.map renderScoringEnd
+        |> Element.column [ Element.spacing 6 ]
 
 
-scoringEnd end =
-    Element.row
-        [ Background.color <|
-            Element.rgba255 180 212 212 0.7
-        ]
-        [ Element.el [] (text end) ]
+renderScoringEnd ( index, scores ) =
+    let
+        endNumber =
+            "#"
+                ++ String.fromInt index
+                |> text
+                |> Element.el []
+
+        endScores =
+            scores
+                |> Dict.toList
+                |> List.map renderScores
+    in
+    endNumber
+        :: endScores
+        |> Element.row
+            [ Background.color <| rgba255 180 212 212 0.7
+            , Element.spacing 12
+            ]
+
+
+renderScores ( _, score ) =
+    Element.el [] <| text score.label
