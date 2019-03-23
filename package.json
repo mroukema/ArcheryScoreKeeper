@@ -20,5 +20,10 @@
   "bugs": {
     "url": "https://github.com/mroukema/ArcheryScoreKeeper/issues"
   },
-  "homepage": "https://github.com/mroukema/ArcheryScoreKeeper#readme"
+  "homepage": "https://github.com/mroukema/ArcheryScoreKeeper#readme",
+  "devDependencies": {
+    "elm": "^0.19.0-bugfix6",
+    "elm-format": "^0.8.1",
+    "elm-live": "^3.4.0"
+  }
 }
