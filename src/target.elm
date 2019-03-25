@@ -1,12 +1,9 @@
-module Target exposing (Target, defaultScoringOptions, scorePos, target, tenRingTarget, translateClientToSvgCoordinates, viewBoxToAttributeString)
+module Target exposing (Target, defaultScoringOptions, tenRingTarget, translateClientToSvgCoordinates, viewBoxToAttributeString)
 
-import Arrow
-import Score exposing (Score)
-import Shot exposing (Shot)
+import Arrow exposing (ArrowSpec)
 import String exposing (fromFloat, fromInt)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import Types exposing (..)
 
 
 
@@ -40,6 +37,46 @@ translateClientToSvgCoordinates boundingBox viewBox clientPos =
     }
 
 
+type alias IntPosition =
+    { x : Int
+    , y : Int
+    }
+
+
+type alias FloatPosition =
+    { x : Float, y : Float }
+
+
+type alias BoundingBox =
+    { bottom : Float
+    , height : Float
+    , left : Float
+    , right : Float
+    , top : Float
+    , width : Float
+    }
+
+
+type alias ViewBox =
+    { left : Float
+    , top : Float
+    , width : Float
+    , height : Float
+    }
+
+
+type alias Shot =
+    { arrow : ArrowSpec
+    , score : Score
+    }
+
+
+type alias Score =
+    { label : String
+    , value : Int
+    }
+
+
 type LineBreakOption
     = Up
     | Down
@@ -61,76 +98,78 @@ defaultScoringOptions =
     }
 
 
-scorePos : ScoringOptions -> TargetSpec -> Arrow.ArrowSpec -> Shot
-scorePos options targetSpec arrow =
-    List.foldr (foldOp options) (compareShot arrow) targetSpec
 
-
-foldOp : ScoringOptions -> TargetRingSpec -> Shot -> Shot
-foldOp options targetRingSpec currentShot =
-    let
-        lineBreak =
-            getLineBreakOptionForCurrentRing options targetRingSpec
-    in
-    case
-        withinRingBounds lineBreak targetRingSpec.radius currentShot.arrow
-            && targetScoreGreater targetRingSpec currentShot
-    of
-        True ->
-            { currentShot | score = targetRingSpec.score }
-
-        False ->
-            currentShot
-
-
-getLineBreakOptionForCurrentRing : ScoringOptions -> TargetRingSpec -> LineBreakOption
-getLineBreakOptionForCurrentRing options targetRingSpec =
-    case targetRingSpec.score.label of
-        "X" ->
-            if options.innerXs then
-                Down
-
-            else
-                options.lineBreak
-
-        "10" ->
-            if options.inner10s then
-                Down
-
-            else
-                options.lineBreak
-
-        default ->
-            options.lineBreak
-
-
-targetScoreGreater : TargetRingSpec -> Shot -> Bool
-targetScoreGreater targetSpec currentShot =
-    targetSpec.score.value > currentShot.score.value
-
-
-withinRingBounds : LineBreakOption -> Float -> Arrow.ArrowSpec -> Bool
-withinRingBounds lineBreak targetRingRadius arrow =
-    let
-        lineBreakDistanceCorrection =
-            case lineBreak of
-                Up ->
-                    -1 * arrow.radius
-
-                Down ->
-                    arrow.radius
-
-                Center ->
-                    0
-    in
-    targetRingRadius > (distanceFromCenter arrow.pos + lineBreakDistanceCorrection)
-
-
-compareShot : Arrow.ArrowSpec -> Shot
-compareShot arrow =
-    Shot
-        arrow
-        (Score "M" 0)
+-- scorePos : ScoringOptions -> TargetSpec -> Arrow.ArrowSpec -> Shot
+-- scorePos options targetSpec arrow =
+--     List.foldr (foldOp options) (compareShot arrow) targetSpec
+--
+--
+-- foldOp : ScoringOptions -> TargetRingSpec -> Shot -> Shot
+-- foldOp options targetRingSpec currentShot =
+--     let
+--         lineBreak =
+--             getLineBreakOptionForCurrentRing options targetRingSpec
+--     in
+--     case
+--         withinRingBounds lineBreak targetRingSpec.radius currentShot.arrow
+--             && targetScoreGreater targetRingSpec currentShot
+--     of
+--         True ->
+--             { currentShot | score = targetRingSpec.score }
+--
+--         False ->
+--             currentShot
+--
+--
+-- getLineBreakOptionForCurrentRing : ScoringOptions -> TargetRingSpec -> LineBreakOption
+-- getLineBreakOptionForCurrentRing options targetRingSpec =
+--     case targetRingSpec.score.label of
+--         "X" ->
+--             if options.innerXs then
+--                 Down
+--
+--             else
+--                 options.lineBreak
+--
+--         "10" ->
+--             if options.inner10s then
+--                 Down
+--
+--             else
+--                 options.lineBreak
+--
+--         default ->
+--             options.lineBreak
+--
+--
+-- targetScoreGreater : TargetRingSpec -> Shot -> Bool
+-- targetScoreGreater targetSpec currentShot =
+--     targetSpec.score.value > currentShot.score.value
+--
+--
+-- withinRingBounds : LineBreakOption -> Float -> Arrow.ArrowSpec -> Bool
+-- withinRingBounds lineBreak targetRingRadius arrow =
+--     let
+--         lineBreakDistanceCorrection =
+--             case lineBreak of
+--                 Up ->
+--                     -1 * 0.65
+--
+--                 Down ->
+--                     0.65
+--
+--                 Center ->
+--                     0
+--     in
+--     targetRingRadius > (distanceFromCenter arrow.pos + lineBreakDistanceCorrection)
+--
+--
+-- compareShot : Arrow.ArrowSpec -> Shot
+-- compareShot arrow =
+--     Shot
+--         arrow
+--         (Score "M" 0)
+--
 
 
 distanceFromCenter : FloatPosition -> Float

@@ -1,18 +1,20 @@
-module Arrow exposing (ArrowSpec, arrow, arrowBase, arrowSpecToArrowSvg, arrowSpecToDragArrowSvg, arrowSpecToSelectedArrowSvg, arrowSvgView, defaultArrow, deselectOnClick, deselectOnMouseUp, endArrowDragOnMouseUp, offsetToPosition, selectOnClick, selectionHighlight, startDragOnPressedMouseMove)
+module Arrow exposing (ArrowSpec, arrow, arrowBase, arrowSpecToArrowSvg, arrowSpecToDragArrowSvg, arrowSpecToSelectedArrowSvg, arrowSvgView, defaultArrow, selectionHighlight)
 
 -- user imports
 
 import Json.Decode as Decode
-import Messages exposing (..)
 import String exposing (fromFloat)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
-import Types exposing (..)
 
 
 
 -- Model
+
+
+type alias FloatPosition =
+    { x : Float, y : Float }
 
 
 type alias ArrowSpec =
@@ -30,7 +32,7 @@ defaultArrow =
 -- View
 
 
-arrowSvgView : Float -> Bool -> List (Svg Messages.Msg)
+arrowSvgView : Float -> Bool -> List (Svg msg)
 arrowSvgView radius selected =
     case selected of
         True ->
@@ -40,37 +42,40 @@ arrowSvgView radius selected =
             arrowBase radius
 
 
-arrowSpecToArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
+arrowSpecToArrowSvg : ( Int, ArrowSpec ) -> Svg msg
 arrowSpecToArrowSvg ( index, arrowSpec ) =
     Svg.g
         [ transform ("translate(" ++ fromFloat arrowSpec.pos.x ++ ", " ++ fromFloat arrowSpec.pos.y ++ ")")
-        , selectOnClick index
+
+        --, selectOnClick index
         ]
         (arrowSvgView arrowSpec.radius False)
 
 
-arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
+arrowSpecToSelectedArrowSvg : ( Int, ArrowSpec ) -> Svg msg
 arrowSpecToSelectedArrowSvg ( index, arrowSpec ) =
     Svg.g
         [ transform ("translate(" ++ fromFloat arrowSpec.pos.x ++ ", " ++ fromFloat arrowSpec.pos.y ++ ")")
-        , deselectOnClick
-        , startDragOnPressedMouseMove
+
+        --, deselectOnClick
+        --, startDragOnPressedMouseMove
         ]
         (arrowSvgView arrowSpec.radius True)
 
 
-arrowSpecToDragArrowSvg : ( Int, ArrowSpec ) -> Svg Messages.Msg
+arrowSpecToDragArrowSvg : ( Int, ArrowSpec ) -> Svg msg
 arrowSpecToDragArrowSvg ( index, arrowSpec ) =
     Svg.g
         [ transform ("translate(" ++ fromFloat arrowSpec.pos.x ++ ", " ++ fromFloat arrowSpec.pos.y ++ ")")
-        , endArrowDragOnMouseUp
-        , deselectOnMouseUp
-        , on "mousemove" (Decode.map ArrowDrag offsetToPosition)
+
+        --, endArrowDragOnMouseUp
+        --, deselectOnMouseUp
+        --, on "mousemove" (Decode.map ArrowDrag offsetToPosition)
         ]
         (arrowSvgView arrowSpec.radius True)
 
 
-selectionHighlight : Float -> List (Svg Messages.Msg)
+selectionHighlight : Float -> List (Svg msg)
 selectionHighlight radius =
     [ Svg.circle
         [ cx "0"
@@ -84,7 +89,7 @@ selectionHighlight radius =
     ]
 
 
-arrowBase : Float -> List (Svg Messages.Msg)
+arrowBase : Float -> List (Svg msg)
 arrowBase radius =
     [ Svg.circle
         [ cx "0"
@@ -100,51 +105,49 @@ arrowBase radius =
     ]
 
 
-arrow : FloatPosition -> Svg Messages.Msg
+arrow : FloatPosition -> Svg msg
 arrow pos =
     arrowSpecToArrowSvg ( 0, defaultArrow pos )
 
 
 
 -- Update
-
-
-startDragOnPressedMouseMove =
-    on "mousemove"
-        (Decode.map2
-            ArrowDragPotentialStart
-            (Decode.field "buttons" Decode.int)
-            (Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int))
-        )
-
-
-selectOnClick : Int -> Attribute Msg
-selectOnClick index =
-    on "mousedown"
-        (Decode.succeed <| Messages.SelectArrow index)
-
-
-deselectOnClick : Attribute Msg
-deselectOnClick =
-    on "click"
-        (Decode.succeed Messages.DeselectArrow)
-
-
-deselectOnMouseUp : Attribute Msg
-deselectOnMouseUp =
-    on "click"
-        (Decode.succeed Messages.DeselectArrow)
-
-
-endArrowDragOnMouseUp : Attribute Msg
-endArrowDragOnMouseUp =
-    on "mouseup"
-        (Decode.map
-            Messages.ArrowDragEnd
-            offsetToPosition
-        )
-
-
-offsetToPosition : Decode.Decoder IntPosition
-offsetToPosition =
-    Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int)
+-- startDragOnPressedMouseMove =
+--     on "mousemove"
+--         (Decode.map2
+--             ArrowDragPotentialStart
+--             (Decode.field "buttons" Decode.int)
+--             (Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int))
+--         )
+--
+--
+-- selectOnClick : Int -> Attribute msg
+-- selectOnClick index =
+--     on "mousedown"
+--         (Decode.succeed <| Messages.SelectArrow index)
+--
+--
+-- deselectOnClick : Attribute Msg
+-- deselectOnClick =
+--     on "click"
+--         (Decode.succeed Messages.DeselectArrow)
+--
+--
+-- deselectOnMouseUp : Attribute Msg
+-- deselectOnMouseUp =
+--     on "click"
+--         (Decode.succeed Messages.DeselectArrow)
+--
+--
+-- endArrowDragOnMouseUp : Attribute Msg
+-- endArrowDragOnMouseUp =
+--     on "mouseup"
+--         (Decode.map
+--             Messages.ArrowDragEnd
+--             offsetToPosition
+--         )
+--
+--
+-- offsetToPosition : Decode.Decoder IntPosition
+-- offsetToPosition =
+--     Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int)
