@@ -75,15 +75,23 @@ initialModel =
                         (Just <| Shot arrowSpec ( 1.0, 2.0 ))
                     , ScoreRecord
                         (Score "9" 9)
-                        (Just <| Shot arrowSpec ( 23.0, 4.8 ))
-                    , ScoreRecord (Score "9" 9) Nothing
+                        (Just <| Shot arrowSpec ( 5, 4.8 ))
+                    , ScoreRecord
+                        (Score "9" 9)
+                        (Just <| Shot arrowSpec ( 3, 4 ))
                     ]
               )
             , ( 2
               , endFromScores
-                    [ ScoreRecord (Score "X" 10) Nothing
-                    , ScoreRecord (Score "9" 9) Nothing
-                    , ScoreRecord (Score "9" 9) Nothing
+                    [ ScoreRecord
+                        (Score "X" 10)
+                        (Just <| Shot arrowSpec ( 0.3, 0.2 ))
+                    , ScoreRecord
+                        (Score "9" 9)
+                        (Just <| Shot arrowSpec ( -4.0, 3.8 ))
+                    , ScoreRecord
+                        (Score "9" 9)
+                        (Just <| Shot arrowSpec ( -2.1, -4.2 ))
                     ]
               )
             , ( 3
@@ -227,7 +235,7 @@ view model =
             ]
             (List.concat <|
                 [ renderSelectedEnds (Dict.toList selectedEnds)
-                , [ targetElement model ]
+                , [ targetElement model.viewport selectedEnds ]
                 , targetScorecard unselectedEnds
                 ]
             )
@@ -247,11 +255,11 @@ viewportSize maybeViewport =
             0 |> px
 
 
-targetElement : Model -> Element msg
-targetElement model =
+targetElement : Maybe Dom.Viewport -> Scorecard -> Element msg
+targetElement viewport selectedEnds =
     let
         size =
-            viewportSize model.viewport
+            viewportSize viewport
     in
     svg
         [ SvgAttr.version "1.1"
@@ -262,7 +270,7 @@ targetElement model =
         , SvgAttr.id "TargetSvg"
         ]
         [ tenRingTarget.view
-        , renderShots (shotsFromEnds <| Dict.values model.scorecard)
+        , renderShots (shotsFromEnds <| Dict.values selectedEnds)
         ]
         |> Element.html
         |> Element.el
