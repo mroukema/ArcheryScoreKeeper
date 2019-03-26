@@ -1,4 +1,4 @@
-module Arrow exposing (ArrowSpec, FloatPosition, arrow, arrowBase, defaultArrow)
+module Arrow exposing (ArrowSpec, FloatPosition, Msg, arrow, arrowBase, defaultArrow, selectedArrow, update)
 
 import Json.Decode as Decode
 import String exposing (fromFloat)
@@ -9,6 +9,20 @@ import Svg.Events exposing (..)
 
 
 -- Model
+
+
+type Msg
+    = ArrowSelection ( Int, Int )
+    | Test
+
+
+update msg model =
+    case msg of
+        ArrowSelection selection ->
+            ( { model | selectedShot = Just selection }, Cmd.none )
+
+        Test ->
+            ( model, Cmd.none )
 
 
 type alias FloatPosition =
@@ -30,7 +44,7 @@ defaultArrow =
     0.65
 
 
-arrow shot =
+selectedArrow shot =
     let
         ( x, y ) =
             shot.pos
@@ -44,8 +58,45 @@ arrow shot =
                 ++ ")"
             )
         ]
-    <|
-        arrowBase defaultArrow
+        (List.append
+            (arrowBase defaultArrow)
+            (selectionHighlight defaultArrow)
+        )
+
+
+arrow : Shot -> List (Attribute msg) -> Svg msg
+arrow shot attr =
+    let
+        ( x, y ) =
+            shot.pos
+    in
+    Svg.g
+        (List.append
+            [ transform
+                ("translate("
+                    ++ fromFloat x
+                    ++ ", "
+                    ++ fromFloat y
+                    ++ ")"
+                )
+            ]
+            attr
+        )
+        (arrowBase defaultArrow)
+
+
+selectionHighlight : Float -> List (Svg msg)
+selectionHighlight radius =
+    [ Svg.circle
+        [ cx "0"
+        , cy "0"
+        , r (radius * 1.65 |> fromFloat)
+        , fill "blue"
+        , opacity ".4"
+        , id "selectedHighlight"
+        ]
+        []
+    ]
 
 
 arrowBase : Float -> List (Svg msg)

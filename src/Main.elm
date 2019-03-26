@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Arrow exposing (arrow)
+import Arrow exposing (arrow, selectedArrow)
 import Browser
 import Browser.Dom as Dom
 import Browser.Events exposing (onResize)
@@ -16,6 +16,7 @@ import Set exposing (Set)
 import String exposing (fromFloat)
 import Svg exposing (Svg, svg)
 import Svg.Attributes as SvgAttr
+import Svg.Events as SvgEvents
 import Target exposing (tenRingTarget)
 import Task
 
@@ -43,18 +44,24 @@ init _ =
 -- Model
 
 
+type alias ArrowMsg =
+    Arrow.Msg
+
+
 type Msg
     = NoOp
     | WindowResize Int Int
     | ViewportResult Dom.Viewport
     | SelectEnd Int
     | DeselectEnd Int
+    | SelectStub EndShotId
 
 
 type alias Model =
     { viewport : Maybe Dom.Viewport
     , scorecard : Scorecard
     , selectedEnds : Set Int
+    , selectedShot : Maybe EndShotId
     }
 
 
@@ -125,6 +132,15 @@ initialModel =
             ]
         )
         (Set.fromList [ 1 ])
+        (Just ( 1, 2 ))
+
+
+type alias EndShotSelection =
+    ( EndShotId, Shot )
+
+
+type alias EndShotId =
+    ( Int, Int )
 
 
 type alias Score =
@@ -183,6 +199,9 @@ update msg model =
         DeselectEnd index ->
             ( { model | selectedEnds = Set.remove index model.selectedEnds }, Cmd.none )
 
+        SelectStub selection ->
+            ( { model | selectedShot = Just selection }, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -197,8 +216,7 @@ endFromScores scores =
         scoreIndices =
             List.range 1 <| List.length scores
     in
-    scores
-        |> List.map2 Tuple.pair scoreIndices
+    List.map2 Tuple.pair scoreIndices scores
         |> Dict.fromList
 
 
@@ -230,12 +248,15 @@ view model =
         [ Element.width <| viewportSize model.viewport ]
         (Element.column
             [ Element.spacing 1
-
-            --, Element.padding 6
             ]
             (List.concat <|
                 [ renderSelectedEnds (Dict.toList selectedEnds)
-                , [ targetElement model.viewport selectedEnds ]
+                , [ targetElement
+                        { selectedEnds = selectedEnds
+                        , viewport = model.viewport
+                        , shotSelection = model.selectedShot
+                        }
+                  ]
                 , targetScorecard unselectedEnds
                 ]
             )
@@ -255,11 +276,44 @@ viewportSize maybeViewport =
             0 |> px
 
 
-targetElement : Maybe Dom.Viewport -> Scorecard -> Element msg
-targetElement viewport selectedEnds =
+type alias TargetData r =
+    { r
+        | viewport : Maybe Dom.Viewport
+        , selectedEnds : Scorecard
+        , shotSelection : Maybe EndShotId
+    }
+
+
+targetElement : TargetData r -> Element Msg
+targetElement { viewport, selectedEnds, shotSelection } =
     let
         size =
             viewportSize viewport
+
+        selectedShotRes =
+            case shotSelection of
+                Just selection ->
+                    Dict.get (Tuple.first selection) selectedEnds
+                        |> Maybe.withDefault Dict.empty
+                        |> Dict.get (Tuple.second selection)
+                        |> Maybe.map .shot
+                        |> Maybe.andThen
+                            (\maybeShot ->
+                                case maybeShot of
+                                    Just shot ->
+                                        Just ( selection, shot )
+
+                                    Nothing ->
+                                        Nothing
+                            )
+
+                Nothing ->
+                    Nothing
+
+        ( _, endShots ) =
+            List.partition
+                (\( shotId, _ ) -> Just shotId == shotSelection)
+                (shotsFromEnds selectedEnds)
     in
     svg
         [ SvgAttr.version "1.1"
@@ -270,7 +324,7 @@ targetElement viewport selectedEnds =
         , SvgAttr.id "TargetSvg"
         ]
         [ tenRingTarget.view
-        , renderShots (shotsFromEnds <| Dict.values selectedEnds)
+        , renderShots endShots selectedShotRes
         ]
         |> Element.html
         |> Element.el
@@ -280,21 +334,48 @@ targetElement viewport selectedEnds =
             ]
 
 
-shotsFromEnd : End -> List Shot
-shotsFromEnd end =
+shotsFromEnd : ( Int, End ) -> List EndShotSelection
+shotsFromEnd ( endIndex, end ) =
     end
         |> Dict.toList
-        |> List.filterMap (\( _, record ) -> record.shot)
+        |> List.filterMap
+            (\( shotIndex, record ) ->
+                case record.shot of
+                    Just shot ->
+                        Just ( ( endIndex, shotIndex ), shot )
+
+                    Nothing ->
+                        Nothing
+            )
 
 
-shotsFromEnds : List End -> List Shot
+shotsFromEnds : Scorecard -> List EndShotSelection
 shotsFromEnds ends =
-    List.map shotsFromEnd ends |> List.concat
+    List.map shotsFromEnd (Dict.toList ends) |> List.concat
 
 
-renderShots : List Shot -> Svg msg
-renderShots shots =
-    Svg.g [] <| List.map arrow shots
+renderShots : List EndShotSelection -> Maybe EndShotSelection -> Svg Msg
+renderShots shots selectedShot =
+    let
+        selectionArrow =
+            case selectedShot of
+                Just selection ->
+                    [ selectedArrow (Tuple.second selection) ]
+
+                Nothing ->
+                    []
+    in
+    Svg.g [] <|
+        List.append
+            (List.map
+                (\shotRecord ->
+                    arrow
+                        (Tuple.second shotRecord)
+                        [ SvgEvents.onClick <| SelectStub <| Tuple.first shotRecord ]
+                )
+                shots
+            )
+            selectionArrow
 
 
 targetScorecard ends =
@@ -337,12 +418,12 @@ selectedEndStyle index =
         , id =
             List.append
                 baseEndStyle.id
-                [ Font.color <| Element.rgb255 255 255 255
+                [ Font.color <| rgb255 255 255 255
                 , Events.onClick <| DeselectEnd index
                 ]
         , score =
             List.append baseEndStyle.score
-                [ Font.color <| Element.rgb255 255 255 255 ]
+                [ Font.color <| rgb255 255 255 255 ]
     }
 
 
