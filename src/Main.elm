@@ -54,14 +54,76 @@ type Msg
     | ViewportResult Dom.Viewport
     | SelectEnd Int
     | DeselectEnd Int
-    | SelectStub EndShotId
+    | SelectShot (Maybe ShotId)
 
 
 type alias Model =
     { viewport : Maybe Dom.Viewport
     , scorecard : Scorecard
     , selectedEnds : Set Int
-    , selectedShot : Maybe EndShotId
+    , selectedShot : Maybe ShotId
+    }
+
+
+type alias ViewModel =
+    { viewsize : Element.Length
+    , selectedRecord : Maybe RecordSelection
+    , selectedEnds : Scorecard
+    , unselectedEnds : Scorecard
+    }
+
+
+type alias ScorecardSelection t =
+    ( ShotId, t )
+
+
+type alias ShotSelection =
+    ScorecardSelection Shot
+
+
+type alias RecordSelection =
+    ScorecardSelection ScoreRecord
+
+
+type alias ShotId =
+    ( Int, Int )
+
+
+type alias Score =
+    { label : String
+    , value : Int
+    }
+
+
+type alias Scorecard =
+    Dict Int End
+
+
+type alias ScoreRecord =
+    { score : Score
+    , shot : Maybe Shot
+    }
+
+
+type alias End =
+    Dict Int ScoreRecord
+
+
+type alias ArrowSpec =
+    Float
+
+
+type alias Shot =
+    { arrow : ArrowSpec
+    , pos : ( Float, Float )
+    }
+
+
+type alias EndStyle r =
+    { r
+        | row : List (Element.Attribute Msg)
+        , id : List (Element.Attribute Msg)
+        , score : List (Element.Attribute Msg)
     }
 
 
@@ -135,52 +197,6 @@ initialModel =
         (Just ( 1, 2 ))
 
 
-type alias EndShotSelection =
-    ( EndShotId, Shot )
-
-
-type alias EndShotId =
-    ( Int, Int )
-
-
-type alias Score =
-    { label : String
-    , value : Int
-    }
-
-
-type alias Scorecard =
-    Dict Int End
-
-
-type alias ScoreRecord =
-    { score : Score
-    , shot : Maybe Shot
-    }
-
-
-type alias End =
-    Dict Int ScoreRecord
-
-
-type alias ArrowSpec =
-    Float
-
-
-type alias Shot =
-    { arrow : ArrowSpec
-    , pos : ( Float, Float )
-    }
-
-
-type alias EndStyle r =
-    { r
-        | row : List (Element.Attribute Msg)
-        , id : List (Element.Attribute Msg)
-        , score : List (Element.Attribute Msg)
-    }
-
-
 
 -- Update
 
@@ -199,8 +215,8 @@ update msg model =
         DeselectEnd index ->
             ( { model | selectedEnds = Set.remove index model.selectedEnds }, Cmd.none )
 
-        SelectStub selection ->
-            ( { model | selectedShot = Just selection }, Cmd.none )
+        SelectShot selection ->
+            ( { model | selectedShot = selection }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -232,9 +248,12 @@ subscriptions model =
 --  View
 
 
-view : Model -> Html Msg
-view model =
+scorecardDataSelector : Model -> ViewModel
+scorecardDataSelector model =
     let
+        viewsize =
+            viewportSize model.viewport
+
         ( selectedEnds, unselectedEnds ) =
             Dict.partition
                 (\endIndex _ ->
@@ -243,21 +262,45 @@ view model =
                         (Set.toList model.selectedEnds)
                 )
                 model.scorecard
+
+        selectedRecord =
+            case model.selectedShot of
+                Just selection ->
+                    Dict.get (Tuple.first selection) selectedEnds
+                        |> Maybe.withDefault Dict.empty
+                        |> Dict.get (Tuple.second selection)
+                        |> Maybe.andThen (\record -> Just ( selection, record ))
+
+                Nothing ->
+                    Nothing
     in
+    ViewModel
+        viewsize
+        selectedRecord
+        selectedEnds
+        unselectedEnds
+
+
+view =
+    scorecard << scorecardDataSelector
+
+
+scorecard : ViewModel -> Html Msg
+scorecard model =
     Element.layout
-        [ Element.width <| viewportSize model.viewport ]
+        [ Element.width model.viewsize ]
         (Element.column
             [ Element.spacing 1
             ]
-            (List.concat <|
-                [ renderSelectedEnds (Dict.toList selectedEnds)
+            (List.concat
+                [ renderSelectedEnds model.selectedEnds
                 , [ targetElement
-                        { selectedEnds = selectedEnds
-                        , viewport = model.viewport
-                        , shotSelection = model.selectedShot
+                        { selectedEnds = model.selectedEnds
+                        , viewsize = model.viewsize
+                        , shotSelection = model.selectedRecord
                         }
                   ]
-                , targetScorecard unselectedEnds
+                , targetScorecard model.unselectedEnds
                 ]
             )
         )
@@ -278,42 +321,25 @@ viewportSize maybeViewport =
 
 type alias TargetData r =
     { r
-        | viewport : Maybe Dom.Viewport
+        | viewsize : Element.Length
         , selectedEnds : Scorecard
-        , shotSelection : Maybe EndShotId
+        , shotSelection : Maybe RecordSelection
     }
 
 
+excludeSelectedShot selectedShot ends =
+    Tuple.second
+        (List.partition
+            (\( shotId, _ ) -> Just shotId == Maybe.map Tuple.first selectedShot)
+            (shotsFromEnds ends)
+        )
+
+
 targetElement : TargetData r -> Element Msg
-targetElement { viewport, selectedEnds, shotSelection } =
+targetElement { viewsize, selectedEnds, shotSelection } =
     let
-        size =
-            viewportSize viewport
-
-        selectedShotRes =
-            case shotSelection of
-                Just selection ->
-                    Dict.get (Tuple.first selection) selectedEnds
-                        |> Maybe.withDefault Dict.empty
-                        |> Dict.get (Tuple.second selection)
-                        |> Maybe.map .shot
-                        |> Maybe.andThen
-                            (\maybeShot ->
-                                case maybeShot of
-                                    Just shot ->
-                                        Just ( selection, shot )
-
-                                    Nothing ->
-                                        Nothing
-                            )
-
-                Nothing ->
-                    Nothing
-
-        ( _, endShots ) =
-            List.partition
-                (\( shotId, _ ) -> Just shotId == shotSelection)
-                (shotsFromEnds selectedEnds)
+        endShots =
+            excludeSelectedShot shotSelection selectedEnds
     in
     svg
         [ SvgAttr.version "1.1"
@@ -324,17 +350,17 @@ targetElement { viewport, selectedEnds, shotSelection } =
         , SvgAttr.id "TargetSvg"
         ]
         [ tenRingTarget.view
-        , renderShots endShots selectedShotRes
+        , renderShots endShots shotSelection
         ]
         |> Element.html
         |> Element.el
-            [ Element.height size
-            , Element.width size
+            [ Element.height viewsize
+            , Element.width viewsize
             , Background.color <| rgba255 150 200 200 0.8
             ]
 
 
-shotsFromEnd : ( Int, End ) -> List EndShotSelection
+shotsFromEnd : ( Int, End ) -> List ShotSelection
 shotsFromEnd ( endIndex, end ) =
     end
         |> Dict.toList
@@ -349,18 +375,26 @@ shotsFromEnd ( endIndex, end ) =
             )
 
 
-shotsFromEnds : Scorecard -> List EndShotSelection
+shotsFromEnds : Scorecard -> List ShotSelection
 shotsFromEnds ends =
     List.map shotsFromEnd (Dict.toList ends) |> List.concat
 
 
-renderShots : List EndShotSelection -> Maybe EndShotSelection -> Svg Msg
-renderShots shots selectedShot =
+renderShots : List ShotSelection -> Maybe RecordSelection -> Svg Msg
+renderShots shots recordSelection =
     let
         selectionArrow =
-            case selectedShot of
-                Just selection ->
-                    [ selectedArrow (Tuple.second selection) ]
+            case recordSelection of
+                Just ( recordId, record ) ->
+                    case record.shot of
+                        Just shot ->
+                            [ selectedArrow
+                                shot
+                                [ SvgEvents.onClick <| SelectShot Nothing ]
+                            ]
+
+                        Nothing ->
+                            []
 
                 Nothing ->
                     []
@@ -371,7 +405,7 @@ renderShots shots selectedShot =
                 (\shotRecord ->
                     arrow
                         (Tuple.second shotRecord)
-                        [ SvgEvents.onClick <| SelectStub <| Tuple.first shotRecord ]
+                        [ SvgEvents.onClick <| SelectShot <| Just (Tuple.first shotRecord) ]
                 )
                 shots
             )
@@ -388,10 +422,11 @@ targetScorecard ends =
 -- Scoring End Views
 
 
+renderSelectedEnds : Scorecard -> List (Element Msg)
 renderSelectedEnds selectedEnds =
     List.map
         renderSelectedEnd
-        selectedEnds
+        (Dict.toList selectedEnds)
 
 
 baseEndStyle =
@@ -409,7 +444,7 @@ baseEndStyle =
     }
 
 
-selectedEndStyle index =
+selectedEndStyle endIndex =
     { baseEndStyle
         | row =
             List.append
@@ -419,11 +454,13 @@ selectedEndStyle index =
             List.append
                 baseEndStyle.id
                 [ Font.color <| rgb255 255 255 255
-                , Events.onClick <| DeselectEnd index
+                , Events.onClick <| DeselectEnd endIndex
                 ]
         , score =
-            List.append baseEndStyle.score
-                [ Font.color <| rgb255 255 255 255 ]
+            List.append
+                baseEndStyle.score
+                [ Font.color <| rgb255 255 255 255
+                ]
     }
 
 
@@ -441,8 +478,8 @@ unselectedEndStyle index =
 
 
 renderSelectedEnd : ( Int, End ) -> Element Msg
-renderSelectedEnd (( index, _ ) as end) =
-    renderScoringEnd (selectedEndStyle index) end
+renderSelectedEnd (( index, _ ) as endSelection) =
+    renderScoringEnd (selectedEndStyle index) endSelection
 
 
 renderUnselectedEnd : ( Int, End ) -> Element Msg
@@ -453,9 +490,23 @@ renderUnselectedEnd (( index, _ ) as end) =
 renderScoringEnd : EndStyle r -> ( Int, End ) -> Element Msg
 renderScoringEnd endStyle ( index, scores ) =
     endNumber endStyle.id index
-        :: renderScores endStyle.score scores
-        |> Element.row
-            endStyle.row
+        :: renderScores endStyle.score ( index, scores )
+        |> Element.row endStyle.row
+
+
+nestedDictMap : Dict comparable (Dict comparable1 t) -> Dict ( comparable, comparable1 ) t
+nestedDictMap dict =
+    Dict.foldl
+        (\key value result ->
+            Dict.foldl
+                (\innerKey innerValue _ ->
+                    Dict.insert ( key, innerKey ) innerValue result
+                )
+                Dict.empty
+                value
+        )
+        Dict.empty
+        dict
 
 
 endNumber : List (Element.Attribute Msg) -> Int -> Element Msg
@@ -466,13 +517,17 @@ endNumber style num =
         |> Element.el style
 
 
-renderScores : List (Element.Attribute Msg) -> End -> List (Element Msg)
-renderScores style scores =
-    scores
+renderScores : List (Element.Attribute Msg) -> ( Int, End ) -> List (Element Msg)
+renderScores style ( endIndex, end ) =
+    end
         |> Dict.toList
         |> List.map
-            (\( _, record ) ->
+            (\( recordIndex, record ) ->
+                ( ( endIndex, recordIndex ), record )
+            )
+        |> List.map
+            (\( shotSelector, record ) ->
                 Element.el
-                    style
+                    ((Events.onClick <| SelectShot (Just shotSelector)) :: style)
                     (text record.score.label)
             )

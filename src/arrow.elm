@@ -44,20 +44,23 @@ defaultArrow =
     0.65
 
 
-selectedArrow shot =
+selectedArrow shot attr =
     let
         ( x, y ) =
             shot.pos
     in
     Svg.g
-        [ transform
-            ("translate("
-                ++ fromFloat x
-                ++ ", "
-                ++ fromFloat y
-                ++ ")"
-            )
-        ]
+        (List.append
+            [ transform
+                ("translate("
+                    ++ fromFloat x
+                    ++ ", "
+                    ++ fromFloat y
+                    ++ ")"
+                )
+            ]
+            attr
+        )
         (List.append
             (arrowBase defaultArrow)
             (selectionHighlight defaultArrow)
