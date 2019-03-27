@@ -293,7 +293,7 @@ scorecard model =
             [ Element.spacing 1
             ]
             (List.concat
-                [ renderSelectedEnds model.selectedEnds
+                [ renderSelectedEnds model.selectedEnds model.selectedRecord
                 , [ targetElement
                         { selectedEnds = model.selectedEnds
                         , viewsize = model.viewsize
@@ -377,26 +377,35 @@ shotsFromEnd ( endIndex, end ) =
 
 shotsFromEnds : Scorecard -> List ShotSelection
 shotsFromEnds ends =
-    List.map shotsFromEnd (Dict.toList ends) |> List.concat
+    List.concat <| List.map shotsFromEnd (Dict.toList ends)
+
+
+shotFromRecordSelection : Maybe RecordSelection -> Maybe ShotSelection
+shotFromRecordSelection recordSelection =
+    recordSelection
+        |> Maybe.andThen
+            (\( recordId, record ) ->
+                case record.shot of
+                    Just shot ->
+                        Just ( recordId, shot )
+
+                    _ ->
+                        Nothing
+            )
 
 
 renderShots : List ShotSelection -> Maybe RecordSelection -> Svg Msg
 renderShots shots recordSelection =
     let
         selectionArrow =
-            case recordSelection of
-                Just ( recordId, record ) ->
-                    case record.shot of
-                        Just shot ->
-                            [ selectedArrow
-                                shot
-                                [ SvgEvents.onClick <| SelectShot Nothing ]
-                            ]
+            case shotFromRecordSelection recordSelection of
+                Just ( _, shot ) ->
+                    [ selectedArrow
+                        shot
+                        [ SvgEvents.onClick <| SelectShot Nothing ]
+                    ]
 
-                        Nothing ->
-                            []
-
-                Nothing ->
+                _ ->
                     []
     in
     Svg.g [] <|
@@ -422,8 +431,8 @@ targetScorecard ends =
 -- Scoring End Views
 
 
-renderSelectedEnds : Scorecard -> List (Element Msg)
-renderSelectedEnds selectedEnds =
+renderSelectedEnds : Scorecard -> Maybe RecordSelection -> List (Element Msg)
+renderSelectedEnds selectedEnds record =
     List.map
         renderSelectedEnd
         (Dict.toList selectedEnds)
