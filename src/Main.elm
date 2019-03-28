@@ -50,14 +50,14 @@ type Msg
     | ViewportResult Dom.Viewport
     | SelectEnd Int
     | DeselectEnd Int
-    | SelectShot (Maybe ShotId)
+    | SelectShot (Maybe RecordId)
 
 
 type alias Model =
     { viewport : Maybe Dom.Viewport
     , scorecard : Scorecard
     , selectedEnds : Set Int
-    , selectedShot : Maybe ShotId
+    , selectedShot : Maybe RecordId
     }
 
 
@@ -65,7 +65,7 @@ type alias Model =
 -}
 type alias ViewModel =
     { viewsize : Element.Length
-    , selectedRecord : Maybe RecordSelection
+    , selectedRecord : RecordSelection
     , selectedEnds : Scorecard
     , unselectedEnds : Scorecard
     }
@@ -73,8 +73,9 @@ type alias ViewModel =
 
 {-| Tuple where first element identifes a scorecard record and t is some info associated with it
 -}
-type alias ScorecardSelection t =
-    ( ShotId, t )
+type ScorecardSelection t
+    = Nothing
+    | Selection ( RecordId, t )
 
 
 type alias ShotSelection =
@@ -85,7 +86,7 @@ type alias RecordSelection =
     ScorecardSelection EndRecord
 
 
-type alias ShotId =
+type alias RecordId =
     ( Int, Int )
 
 
@@ -125,11 +126,23 @@ type alias Shot =
     }
 
 
+
+-- Record Specs
+
+
 type alias EndStyle r =
     { r
         | row : List (Element.Attribute Msg)
         , id : List (Element.Attribute Msg)
         , score : List (Element.Attribute Msg)
+    }
+
+
+type alias TargetData r =
+    { r
+        | viewsize : Element.Length
+        , selectedEnds : Scorecard
+        , shotSelection : RecordSelection
     }
 
 
@@ -141,7 +154,7 @@ arrowSpec =
 initialModel : Model
 initialModel =
     Model
-        Nothing
+        Maybe.Nothing
         (Dict.fromList
             [ ( 1
               , endFromScores
@@ -271,9 +284,16 @@ scorecardDataSelector model =
                     Dict.get (Tuple.first selection) selectedEnds
                         |> Maybe.withDefault Dict.empty
                         |> Dict.get (Tuple.second selection)
-                        |> Maybe.andThen (\record -> Just ( selection, record ))
+                        |> (\result ->
+                                case result of
+                                    Just record ->
+                                        Selection ( selection, record )
 
-                Nothing ->
+                                    Maybe.Nothing ->
+                                        Nothing
+                           )
+
+                Maybe.Nothing ->
                     Nothing
     in
     ViewModel
@@ -313,22 +333,26 @@ viewportSize maybeViewport =
             in
             min (floor viewport.width) (floor viewport.height) |> px
 
-        Nothing ->
+        Maybe.Nothing ->
             0 |> px
-
-
-type alias TargetData r =
-    { r
-        | viewsize : Element.Length
-        , selectedEnds : Scorecard
-        , shotSelection : Maybe RecordSelection
-    }
 
 
 excludeSelectedShot selectedShot ends =
     Tuple.second
         (List.partition
-            (\( shotId, _ ) -> Just shotId == Maybe.map Tuple.first selectedShot)
+            (\selection ->
+                case selection of
+                    Selection ( recordId, _ ) ->
+                        case selectedShot of
+                            Nothing ->
+                                False
+
+                            Selection ( shotId, _ ) ->
+                                recordId == shotId
+
+                    Nothing ->
+                        False
+            )
             (shotsFromEnds ends)
         )
 
@@ -373,15 +397,18 @@ shotsFromEnd ( endIndex, end ) =
         var =
             \( shotIndex, record ) ->
                 case record of
-                    ShotRecord _ shot ->
-                        Just ( ( endIndex, shotIndex ), shot )
+                    ShotRecord score shot ->
+                        Selection ( ( endIndex, shotIndex ), shot )
+
+                    ScoreRecord score ->
+                        Nothing
 
                     _ ->
                         Nothing
     in
     end
         |> Dict.toList
-        |> List.filterMap var
+        |> List.map var
 
 
 {-| Get a list of (shotId, shot) pairs from the score records within a scorecard that contain shot information
@@ -394,30 +421,36 @@ shotsFromEnds ends =
     List.concat <| List.map shotsFromEnd (Dict.toList ends)
 
 
-shotFromRecordSelection : Maybe RecordSelection -> Maybe ShotSelection
+shotFromRecordSelection : RecordSelection -> Maybe ShotSelection
 shotFromRecordSelection recordSelection =
-    recordSelection
-        |> Maybe.andThen
-            (\( recordId, record ) ->
-                case record of
-                    ShotRecord _ shot ->
-                        Just ( recordId, shot )
+    case recordSelection of
+        Selection ( recordId, record ) ->
+            case record of
+                ShotRecord _ shot ->
+                    Just <| Selection ( recordId, shot )
 
-                    _ ->
-                        Nothing
-            )
+                _ ->
+                    Maybe.Nothing
+
+        _ ->
+            Maybe.Nothing
 
 
-renderShots : List ShotSelection -> Maybe RecordSelection -> Svg Msg
+renderShots : List ShotSelection -> RecordSelection -> Svg Msg
 renderShots shots recordSelection =
     let
         selectionArrow =
             case shotFromRecordSelection recordSelection of
-                Just ( _, shot ) ->
-                    [ selectedArrow
-                        shot
-                        [ SvgEvents.onClick <| SelectShot Nothing ]
-                    ]
+                Just selection ->
+                    case selection of
+                        Selection ( _, shot ) ->
+                            [ selectedArrow
+                                shot
+                                [ SvgEvents.onClick <| SelectShot Maybe.Nothing ]
+                            ]
+
+                        Nothing ->
+                            []
 
                 _ ->
                     []
@@ -426,9 +459,14 @@ renderShots shots recordSelection =
         List.append
             (List.map
                 (\shotRecord ->
-                    arrow
-                        (Tuple.second shotRecord)
-                        [ SvgEvents.onClick <| SelectShot <| Just (Tuple.first shotRecord) ]
+                    case shotRecord of
+                        Selection ( recordId, record ) ->
+                            arrow
+                                record
+                                [ SvgEvents.onClick <| SelectShot <| Just recordId ]
+
+                        Nothing ->
+                            Svg.g [] []
                 )
                 shots
             )
@@ -445,7 +483,7 @@ targetScorecard ends =
 -- Scoring End Views
 
 
-renderSelectedEnds : Scorecard -> Maybe RecordSelection -> List (Element Msg)
+renderSelectedEnds : Scorecard -> RecordSelection -> List (Element Msg)
 renderSelectedEnds selectedEnds record =
     List.map
         renderSelectedEnd
