@@ -44,10 +44,6 @@ init _ =
 -- Model
 
 
-type alias ArrowMsg =
-    Arrow.Msg
-
-
 type Msg
     = NoOp
     | WindowResize Int Int
@@ -65,6 +61,8 @@ type alias Model =
     }
 
 
+{-| The information used to render the view. Derive from model.
+-}
 type alias ViewModel =
     { viewsize : Element.Length
     , selectedRecord : Maybe RecordSelection
@@ -73,6 +71,8 @@ type alias ViewModel =
     }
 
 
+{-| Tuple where first element identifes a scorecard record and t is some info associated with it
+-}
 type alias ScorecardSelection t =
     ( ShotId, t )
 
@@ -82,7 +82,7 @@ type alias ShotSelection =
 
 
 type alias RecordSelection =
-    ScorecardSelection ScoreRecord
+    ScorecardSelection EndRecord
 
 
 type alias ShotId =
@@ -95,24 +95,30 @@ type alias Score =
     }
 
 
+{-| Data for one arrow of an End.
+Record can be empty or it can contain a score.
+Optionally can there can be a record of the shot associated with the score
+-}
+type EndRecord
+    = ScoreRecord Score
+    | ShotRecord Score Shot
+    | Empty
+
+
 type alias Scorecard =
     Dict Int End
 
 
-type alias ScoreRecord =
-    { score : Score
-    , shot : Maybe Shot
-    }
-
-
 type alias End =
-    Dict Int ScoreRecord
+    Dict Int EndRecord
 
 
 type alias ArrowSpec =
     Float
 
 
+{-| Describes where the shot landed on target and what sort of arrow was used
+-}
 type alias Shot =
     { arrow : ArrowSpec
     , pos : ( Float, Float )
@@ -139,56 +145,44 @@ initialModel =
         (Dict.fromList
             [ ( 1
               , endFromScores
-                    [ ScoreRecord
-                        (Score "10" 10)
-                        (Just <| Shot arrowSpec ( 1.0, 2.0 ))
-                    , ScoreRecord
-                        (Score "9" 9)
-                        (Just <| Shot arrowSpec ( 5, 4.8 ))
-                    , ScoreRecord
-                        (Score "9" 9)
-                        (Just <| Shot arrowSpec ( 3, 4 ))
+                    [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 1.0, 2.0 ))
+                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( 5, 4.8 ))
+                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( 3, 4 ))
                     ]
               )
             , ( 2
               , endFromScores
-                    [ ScoreRecord
-                        (Score "X" 10)
-                        (Just <| Shot arrowSpec ( 0.3, 0.2 ))
-                    , ScoreRecord
-                        (Score "9" 9)
-                        (Just <| Shot arrowSpec ( -4.0, 3.8 ))
-                    , ScoreRecord
-                        (Score "9" 9)
-                        (Just <| Shot arrowSpec ( -2.1, -4.2 ))
+                    [ ShotRecord (Score "X" 10) (Shot arrowSpec ( 0.3, 0.2 ))
+                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( -4.0, 3.8 ))
+                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( -2.1, -4.2 ))
                     ]
               )
             , ( 3
               , endFromScores
-                    [ ScoreRecord (Score "X" 10) Nothing
-                    , ScoreRecord (Score "10" 10) Nothing
-                    , ScoreRecord (Score "9" 9) Nothing
+                    [ ScoreRecord (Score "X" 10)
+                    , ScoreRecord (Score "10" 10)
+                    , ScoreRecord (Score "9" 9)
                     ]
               )
             , ( 4
               , endFromScores
-                    [ ScoreRecord (Score "10" 10) Nothing
-                    , ScoreRecord (Score "10" 10) Nothing
-                    , ScoreRecord (Score "8" 8) Nothing
+                    [ ScoreRecord (Score "10" 10)
+                    , ScoreRecord (Score "10" 10)
+                    , ScoreRecord (Score "8" 8)
                     ]
               )
             , ( 5
               , endFromScores
-                    [ ScoreRecord (Score "9" 10) Nothing
-                    , ScoreRecord (Score "9" 10) Nothing
-                    , ScoreRecord (Score "9" 8) Nothing
+                    [ ScoreRecord (Score "9" 10)
+                    , ScoreRecord (Score "9" 10)
+                    , ScoreRecord (Score "9" 8)
                     ]
               )
             , ( 6
               , endFromScores
-                    [ ScoreRecord (Score "X" 10) Nothing
-                    , ScoreRecord (Score "10" 10) Nothing
-                    , ScoreRecord (Score "9" 8) Nothing
+                    [ ScoreRecord (Score "X" 10)
+                    , ScoreRecord (Score "10" 10)
+                    , ScoreRecord (Score "9" 8)
                     ]
               )
             ]
@@ -226,14 +220,16 @@ getViewport =
     Task.perform ViewportResult Dom.getViewport
 
 
-endFromScores : List ScoreRecord -> End
+endFromScores : List EndRecord -> End
 endFromScores scores =
     let
+        zip =
+            List.map2 Tuple.pair
+
         scoreIndices =
             List.range 1 <| List.length scores
     in
-    List.map2 Tuple.pair scoreIndices scores
-        |> Dict.fromList
+    Dict.fromList (zip scoreIndices scores)
 
 
 
@@ -248,6 +244,12 @@ subscriptions model =
 --  View
 
 
+view =
+    scorecard << scorecardDataSelector
+
+
+{-| Select and derive the data used to render view from model data
+-}
 scorecardDataSelector : Model -> ViewModel
 scorecardDataSelector model =
     let
@@ -279,10 +281,6 @@ scorecardDataSelector model =
         selectedRecord
         selectedEnds
         unselectedEnds
-
-
-view =
-    scorecard << scorecardDataSelector
 
 
 scorecard : ViewModel -> Html Msg
@@ -360,21 +358,37 @@ targetElement { viewsize, selectedEnds, shotSelection } =
             ]
 
 
+{-| Get a list of (shotId, shot) pairs from the score records in the end that contain shot information.
+
+    shotsFromEnd
+        (ShotRecord
+            |> Score "X" 10
+            |> Shot arrowSpec ( 0.3, 0.2 )
+        )
+
+-}
 shotsFromEnd : ( Int, End ) -> List ShotSelection
 shotsFromEnd ( endIndex, end ) =
-    end
-        |> Dict.toList
-        |> List.filterMap
-            (\( shotIndex, record ) ->
-                case record.shot of
-                    Just shot ->
+    let
+        var =
+            \( shotIndex, record ) ->
+                case record of
+                    ShotRecord _ shot ->
                         Just ( ( endIndex, shotIndex ), shot )
 
-                    Nothing ->
+                    _ ->
                         Nothing
-            )
+    in
+    end
+        |> Dict.toList
+        |> List.filterMap var
 
 
+{-| Get a list of (shotId, shot) pairs from the score records within a scorecard that contain shot information
+
+    shotsFromEnd scorecard
+
+-}
 shotsFromEnds : Scorecard -> List ShotSelection
 shotsFromEnds ends =
     List.concat <| List.map shotsFromEnd (Dict.toList ends)
@@ -385,8 +399,8 @@ shotFromRecordSelection recordSelection =
     recordSelection
         |> Maybe.andThen
             (\( recordId, record ) ->
-                case record.shot of
-                    Just shot ->
+                case record of
+                    ShotRecord _ shot ->
                         Just ( recordId, shot )
 
                     _ ->
@@ -536,7 +550,15 @@ renderScores style ( endIndex, end ) =
             )
         |> List.map
             (\( shotSelector, record ) ->
-                Element.el
-                    ((Events.onClick <| SelectShot (Just shotSelector)) :: style)
-                    (text record.score.label)
+                case record of
+                    Empty ->
+                        Element.el style <| text "-"
+
+                    ShotRecord score _ ->
+                        Element.el
+                            ((Events.onClick <| SelectShot (Just shotSelector)) :: style)
+                            (text score.label)
+
+                    ScoreRecord score ->
+                        Element.el style (text score.label)
             )
