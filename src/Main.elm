@@ -103,7 +103,7 @@ Optionally can there can be a record of the shot associated with the score
 type EndRecord
     = ScoreRecord Score
     | ShotRecord Score Shot
-    | Empty
+    | EmptyRecord
 
 
 type alias Scorecard =
@@ -187,15 +187,15 @@ initialModel =
             , ( 5
               , endFromScores
                     [ ScoreRecord (Score "9" 10)
-                    , ScoreRecord (Score "9" 10)
-                    , ScoreRecord (Score "9" 8)
+                    , EmptyRecord
+                    , EmptyRecord
                     ]
               )
             , ( 6
               , endFromScores
-                    [ ScoreRecord (Score "X" 10)
-                    , ScoreRecord (Score "10" 10)
-                    , ScoreRecord (Score "9" 8)
+                    [ EmptyRecord
+                    , EmptyRecord
+                    , EmptyRecord
                     ]
               )
             ]
@@ -589,7 +589,7 @@ renderScores style ( endIndex, end ) =
         |> List.map
             (\( shotSelector, record ) ->
                 case record of
-                    Empty ->
+                    EmptyRecord ->
                         Element.el style <| text "-"
 
                     ShotRecord score _ ->
