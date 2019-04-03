@@ -5,9 +5,10 @@ import Browser
 import Browser.Dom as Dom
 import Browser.Events exposing (onResize)
 import Dict exposing (Dict)
+import Dict.Extra as Dict
 import Element exposing (Element, fill, height, px, rgb255, rgba255, text, width)
-import Element.Background as Background
-import Element.Events as Events
+import Element.Background as Element
+import Element.Events as Element
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
@@ -58,6 +59,7 @@ type alias Model =
     , scorecard : Scorecard
     , selectedEnds : Set Int
     , selectedShot : Maybe RecordId
+    , tst : RecursiveDict Int String
     }
 
 
@@ -66,8 +68,8 @@ type alias Model =
 type alias ViewModel =
     { viewsize : Element.Length
     , selectedRecord : RecordSelection
-    , selectedEnds : Scorecard
-    , unselectedEnds : Scorecard
+    , selectedEnds : RecordCard
+    , unselectedEnds : RecordCard
     }
 
 
@@ -86,8 +88,16 @@ type alias RecordSelection =
     ScorecardSelection EndRecord
 
 
+type alias RecordCard =
+    Dict RecordId EndRecord
+
+
 type alias RecordId =
-    ( Int, Int )
+    ( EndId, ShotId )
+
+
+type alias RecordList =
+    List ( RecordId, EndRecord )
 
 
 type alias Score =
@@ -106,12 +116,20 @@ type EndRecord
     | EmptyRecord
 
 
+type alias EndId =
+    Int
+
+
+type alias ShotId =
+    Int
+
+
 type alias Scorecard =
-    Dict Int End
+    Dict EndId End
 
 
 type alias End =
-    Dict Int EndRecord
+    Dict ShotId EndRecord
 
 
 type alias ArrowSpec =
@@ -141,7 +159,7 @@ type alias EndStyle r =
 type alias TargetData r =
     { r
         | viewsize : Element.Length
-        , selectedEnds : Scorecard
+        , selectedEnds : RecordCard
         , shotSelection : RecordSelection
     }
 
@@ -157,51 +175,70 @@ initialModel =
         Maybe.Nothing
         (Dict.fromList
             [ ( 1
-              , endFromScores
-                    [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 1.0, 2.0 ))
-                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( 5, 4.8 ))
-                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( 3, 4 ))
-                    ]
+              , Dict.fromList <|
+                    List.map2
+                        Tuple.pair
+                        (List.range 1 3)
+                        [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 1.0, 2.0 ))
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 5, 4.8 ))
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 3, 4 ))
+                        ]
               )
             , ( 2
-              , endFromScores
-                    [ ShotRecord (Score "X" 10) (Shot arrowSpec ( 0.3, 0.2 ))
-                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( -4.0, 3.8 ))
-                    , ShotRecord (Score "9" 9) (Shot arrowSpec ( -2.1, -4.2 ))
-                    ]
+              , Dict.fromList <|
+                    List.map2
+                        Tuple.pair
+                        (List.range 1 3)
+                        [ ShotRecord (Score "X" 10) (Shot arrowSpec ( 0.3, 0.2 ))
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -4.0, 3.8 ))
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -2.1, -4.2 ))
+                        ]
               )
             , ( 3
-              , endFromScores
-                    [ ScoreRecord (Score "X" 10)
-                    , ScoreRecord (Score "10" 10)
-                    , ScoreRecord (Score "9" 9)
-                    ]
+              , Dict.fromList <|
+                    List.map2
+                        Tuple.pair
+                        (List.range 1 3)
+                        [ ScoreRecord (Score "X" 10)
+                        , ScoreRecord (Score "10" 10)
+                        , ScoreRecord (Score "9" 9)
+                        ]
               )
             , ( 4
-              , endFromScores
-                    [ ScoreRecord (Score "10" 10)
-                    , ScoreRecord (Score "10" 10)
-                    , ScoreRecord (Score "8" 8)
-                    ]
+              , Dict.fromList <|
+                    List.map2
+                        Tuple.pair
+                        (List.range 1 3)
+                        [ ScoreRecord (Score "10" 10)
+                        , ScoreRecord (Score "10" 10)
+                        , ScoreRecord (Score "8" 8)
+                        ]
               )
             , ( 5
-              , endFromScores
-                    [ ScoreRecord (Score "9" 10)
-                    , EmptyRecord
-                    , EmptyRecord
-                    ]
+              , Dict.fromList <|
+                    List.map2
+                        Tuple.pair
+                        (List.range 1 3)
+                        [ ScoreRecord (Score "9" 10)
+                        , EmptyRecord
+                        , EmptyRecord
+                        ]
               )
             , ( 6
-              , endFromScores
-                    [ EmptyRecord
-                    , EmptyRecord
-                    , EmptyRecord
-                    ]
+              , Dict.fromList <|
+                    List.map2
+                        Tuple.pair
+                        (List.range 1 3)
+                        [ EmptyRecord
+                        , EmptyRecord
+                        , EmptyRecord
+                        ]
               )
             ]
         )
         (Set.fromList [ 1 ])
         (Just ( 1, 2 ))
+        test
 
 
 
@@ -233,16 +270,47 @@ getViewport =
     Task.perform ViewportResult Dom.getViewport
 
 
-endFromScores : List EndRecord -> End
-endFromScores scores =
-    let
-        zip =
-            List.map2 Tuple.pair
 
-        scoreIndices =
-            List.range 1 <| List.length scores
-    in
-    Dict.fromList (zip scoreIndices scores)
+-- Custom Dict Functions
+
+
+type RecursiveDict comparable a
+    = Node (Dict comparable (RecursiveDict comparable a))
+    | Leaf a
+
+
+test1 =
+    Node (Dict.singleton 2 (Node (Dict.singleton 1 (Leaf "hello"))))
+
+
+test =
+    case test1 of
+        Node dict ->
+            Node (Dict.insert 3 (Leaf "y") dict)
+
+        Leaf value ->
+            test1
+
+
+dictToNestedList keyMapper dictionary =
+    dictionary
+        |> Dict.map (\k v -> v |> Dict.mapKeys (keyMapper k) >> Dict.toList)
+        |> Dict.values
+
+
+mapDictFlatBy : (comparable1 -> comparable2 -> comparable3) -> Dict comparable1 (Dict comparable2 v) -> List ( comparable3, v )
+mapDictFlatBy keyMapper =
+    dictToNestedList keyMapper >> List.concat
+
+
+flattenDict : Dict comparable (Dict comparable1 c) -> Dict ( comparable, comparable1 ) c
+flattenDict =
+    flattenDictToList >> Dict.fromList
+
+
+flattenDictToList : Dict comparable (Dict comparable1 c) -> List ( ( comparable, comparable1 ), c )
+flattenDictToList dictionary =
+    mapDictFlatBy Tuple.pair dictionary
 
 
 
@@ -270,20 +338,19 @@ scorecardDataSelector model =
             viewportSize model.viewport
 
         ( selectedEnds, unselectedEnds ) =
-            Dict.partition
-                (\endIndex _ ->
-                    List.any
-                        (\selectedIndex -> endIndex == selectedIndex)
-                        (Set.toList model.selectedEnds)
-                )
-                model.scorecard
+            Tuple.mapBoth flattenDict flattenDict <|
+                Dict.partition
+                    (\endIndex _ ->
+                        List.any
+                            (\selectedIndex -> endIndex == selectedIndex)
+                            (Set.toList model.selectedEnds)
+                    )
+                    model.scorecard
 
         selectedRecord =
             case model.selectedShot of
                 Just selection ->
-                    Dict.get (Tuple.first selection) selectedEnds
-                        |> Maybe.withDefault Dict.empty
-                        |> Dict.get (Tuple.second selection)
+                    Dict.get selection selectedEnds
                         |> (\result ->
                                 case result of
                                     Just record ->
@@ -337,24 +404,14 @@ viewportSize maybeViewport =
             0 |> px
 
 
+excludeSelectedShot : RecordSelection -> RecordCard -> RecordCard
 excludeSelectedShot selectedShot ends =
-    Tuple.second
-        (List.partition
-            (\selection ->
-                case selection of
-                    Selection ( recordId, _ ) ->
-                        case selectedShot of
-                            Nothing ->
-                                False
+    case selectedShot of
+        Nothing ->
+            ends
 
-                            Selection ( shotId, _ ) ->
-                                recordId == shotId
-
-                    Nothing ->
-                        False
-            )
-            (shotsFromEnds ends)
-        )
+        Selection ( recordId, _ ) ->
+            Dict.remove recordId ends
 
 
 targetElement : TargetData r -> Element Msg
@@ -362,6 +419,9 @@ targetElement { viewsize, selectedEnds, shotSelection } =
     let
         endShots =
             excludeSelectedShot shotSelection selectedEnds
+
+        shotList =
+            Dict.toList endShots
     in
     svg
         [ SvgAttr.version "1.1"
@@ -372,53 +432,14 @@ targetElement { viewsize, selectedEnds, shotSelection } =
         , SvgAttr.id "TargetSvg"
         ]
         [ tenRingTarget.view
-        , renderShots endShots shotSelection
+        , renderShots shotList shotSelection
         ]
         |> Element.html
         |> Element.el
             [ Element.height viewsize
             , Element.width viewsize
-            , Background.color <| rgba255 150 200 200 0.8
+            , Element.color <| rgba255 150 200 200 0.8
             ]
-
-
-{-| Get a list of (shotId, shot) pairs from the score records in the end that contain shot information.
-
-    shotsFromEnd
-        (ShotRecord
-            |> Score "X" 10
-            |> Shot arrowSpec ( 0.3, 0.2 )
-        )
-
--}
-shotsFromEnd : ( Int, End ) -> List ShotSelection
-shotsFromEnd ( endIndex, end ) =
-    let
-        var =
-            \( shotIndex, record ) ->
-                case record of
-                    ShotRecord score shot ->
-                        Selection ( ( endIndex, shotIndex ), shot )
-
-                    ScoreRecord score ->
-                        Nothing
-
-                    _ ->
-                        Nothing
-    in
-    end
-        |> Dict.toList
-        |> List.map var
-
-
-{-| Get a list of (shotId, shot) pairs from the score records within a scorecard that contain shot information
-
-    shotsFromEnd scorecard
-
--}
-shotsFromEnds : Scorecard -> List ShotSelection
-shotsFromEnds ends =
-    List.concat <| List.map shotsFromEnd (Dict.toList ends)
 
 
 shotFromRecordSelection : RecordSelection -> Maybe ShotSelection
@@ -436,7 +457,7 @@ shotFromRecordSelection recordSelection =
             Maybe.Nothing
 
 
-renderShots : List ShotSelection -> RecordSelection -> Svg Msg
+renderShots : RecordList -> RecordSelection -> Svg Msg
 renderShots shots recordSelection =
     let
         selectionArrow =
@@ -458,14 +479,14 @@ renderShots shots recordSelection =
     Svg.g [] <|
         List.append
             (List.map
-                (\shotRecord ->
-                    case shotRecord of
-                        Selection ( recordId, record ) ->
+                (\( recordId, record ) ->
+                    case record of
+                        ShotRecord score shot ->
                             arrow
-                                record
+                                shot
                                 [ SvgEvents.onClick <| SelectShot <| Just recordId ]
 
-                        Nothing ->
+                        _ ->
                             Svg.g [] []
                 )
                 shots
@@ -473,23 +494,34 @@ renderShots shots recordSelection =
             selectionArrow
 
 
+targetScorecard : RecordCard -> List (Element Msg)
 targetScorecard ends =
     ends
-        |> Dict.toList
+        |> groupByEnd
         |> List.map renderUnselectedEnd
+
+
+groupByEnd : RecordCard -> List RecordList
+groupByEnd ends =
+    ends
+        |> Dict.toList
+        |> Dict.groupBy (Tuple.first >> Tuple.first)
+        |> Dict.toList
+        |> List.map Tuple.second
 
 
 
 -- Scoring End Views
 
 
-renderSelectedEnds : Scorecard -> RecordSelection -> List (Element Msg)
+renderSelectedEnds : RecordCard -> RecordSelection -> List (Element Msg)
 renderSelectedEnds selectedEnds record =
-    List.map
-        renderSelectedEnd
-        (Dict.toList selectedEnds)
+    selectedEnds
+        |> groupByEnd
+        |> List.map renderSelectedEnd
 
 
+baseEndStyle : EndStyle {}
 baseEndStyle =
     { row =
         [ Element.spacing 12
@@ -505,17 +537,18 @@ baseEndStyle =
     }
 
 
+selectedEndStyle : EndId -> EndStyle {}
 selectedEndStyle endIndex =
     { baseEndStyle
         | row =
             List.append
                 baseEndStyle.row
-                [ Background.color <| rgba255 70 50 230 0.8 ]
+                [ Element.color <| rgba255 70 50 230 0.8 ]
         , id =
             List.append
                 baseEndStyle.id
                 [ Font.color <| rgb255 255 255 255
-                , Events.onClick <| DeselectEnd endIndex
+                , Element.onClick <| DeselectEnd endIndex
                 ]
         , score =
             List.append
@@ -525,49 +558,50 @@ selectedEndStyle endIndex =
     }
 
 
+unselectedEndStyle : EndId -> EndStyle {}
 unselectedEndStyle index =
     { baseEndStyle
         | id =
             List.append
                 baseEndStyle.id
-                [ Events.onClick <| SelectEnd index ]
+                [ Element.onClick <| SelectEnd index ]
         , row =
             List.append
                 baseEndStyle.row
-                [ Background.color <| rgba255 150 200 200 0.8 ]
+                [ Element.color <| rgba255 150 200 200 0.8 ]
     }
 
 
-renderSelectedEnd : ( Int, End ) -> Element Msg
-renderSelectedEnd (( index, _ ) as endSelection) =
-    renderScoringEnd (selectedEndStyle index) endSelection
+renderSelectedEnd : RecordList -> Element Msg
+renderSelectedEnd end =
+    let
+        -- TODO improve
+        endId =
+            List.head end |> Maybe.andThen (Just << Tuple.first << Tuple.first) |> Maybe.withDefault 0
+    in
+    renderScoringEnd (selectedEndStyle endId) end
 
 
-renderUnselectedEnd : ( Int, End ) -> Element Msg
-renderUnselectedEnd (( index, _ ) as end) =
-    renderScoringEnd (unselectedEndStyle index) end
+renderUnselectedEnd : RecordList -> Element Msg
+renderUnselectedEnd end =
+    let
+        -- TODO improve
+        endId =
+            List.head end |> Maybe.andThen (Just << Tuple.first << Tuple.first) |> Maybe.withDefault 0
+    in
+    renderScoringEnd (unselectedEndStyle endId) end
 
 
-renderScoringEnd : EndStyle r -> ( Int, End ) -> Element Msg
-renderScoringEnd endStyle ( index, scores ) =
-    endNumber endStyle.id index
-        :: renderScores endStyle.score ( index, scores )
+renderScoringEnd : EndStyle r -> RecordList -> Element Msg
+renderScoringEnd endStyle end =
+    let
+        -- TODO improve
+        endId =
+            List.head end |> Maybe.andThen (Just << Tuple.first << Tuple.first) |> Maybe.withDefault 0
+    in
+    endNumber endStyle.id endId
+        :: renderScores endStyle.score end
         |> Element.row endStyle.row
-
-
-nestedDictMap : Dict comparable (Dict comparable1 t) -> Dict ( comparable, comparable1 ) t
-nestedDictMap dict =
-    Dict.foldl
-        (\key value result ->
-            Dict.foldl
-                (\innerKey innerValue _ ->
-                    Dict.insert ( key, innerKey ) innerValue result
-                )
-                Dict.empty
-                value
-        )
-        Dict.empty
-        dict
 
 
 endNumber : List (Element.Attribute Msg) -> Int -> Element Msg
@@ -578,25 +612,21 @@ endNumber style num =
         |> Element.el style
 
 
-renderScores : List (Element.Attribute Msg) -> ( Int, End ) -> List (Element Msg)
-renderScores style ( endIndex, end ) =
-    end
-        |> Dict.toList
-        |> List.map
-            (\( recordIndex, record ) ->
-                ( ( endIndex, recordIndex ), record )
-            )
-        |> List.map
-            (\( shotSelector, record ) ->
-                case record of
-                    EmptyRecord ->
-                        Element.el style <| text "-"
+renderScores : List (Element.Attribute Msg) -> RecordList -> List (Element Msg)
+renderScores style end =
+    List.map (renderScore style) end
 
-                    ShotRecord score _ ->
-                        Element.el
-                            ((Events.onClick <| SelectShot (Just shotSelector)) :: style)
-                            (text score.label)
 
-                    ScoreRecord score ->
-                        Element.el style (text score.label)
-            )
+renderScore : List (Element.Attribute Msg) -> ( RecordId, EndRecord ) -> Element Msg
+renderScore style ( recordId, record ) =
+    case record of
+        EmptyRecord ->
+            Element.el style <| text "-"
+
+        ShotRecord score _ ->
+            Element.el
+                ((Element.onClick <| SelectShot (Just recordId)) :: style)
+                (text score.label)
+
+        ScoreRecord score ->
+            Element.el style (text score.label)
