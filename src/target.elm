@@ -1,6 +1,7 @@
 module Target exposing (Target, defaultScoringOptions, tenRingTarget, translateClientToSvgCoordinates, viewBoxToAttributeString)
 
 import Arrow exposing (ArrowSpec)
+import Browser.Dom as Dom
 import String exposing (fromFloat, fromInt)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -22,18 +23,50 @@ viewBoxToAttributeString viewBox =
         ++ fromFloat viewBox.width
 
 
-translateClientToSvgCoordinates : BoundingBox -> ViewBox -> IntPosition -> FloatPosition
-translateClientToSvgCoordinates boundingBox viewBox clientPos =
+translateClientToSvgCoordinates : ViewBox -> Maybe Dom.Element -> IntPosition -> FloatPosition
+translateClientToSvgCoordinates viewBox maybeElement clientPos =
+    let
+        elementDom =
+            case maybeElement of
+                Just dom ->
+                    dom
+
+                Nothing ->
+                    { viewport = { width = 0, height = 0, x = 0, y = 0 }
+                    , element = { width = 0, height = 0, x = 0, y = 0 }
+                    , scene = { height = 0, width = 0 }
+                    }
+
+        viewport =
+            elementDom.viewport
+
+        element =
+            elementDom.element
+    in
     { x =
-        ((toFloat clientPos.x - boundingBox.left)
-            * (viewBox.width / boundingBox.width)
+        ((toFloat clientPos.x
+            - element.x
+         )
+            * (viewBox.width
+                / viewport.width
+              )
         )
             + viewBox.left
+            + viewport.x
+
+    -- + viewBox.left
     , y =
-        ((toFloat clientPos.y - boundingBox.top)
-            * (viewBox.height / boundingBox.height)
+        ((toFloat clientPos.y
+            - element.y
+         )
+            * (viewBox.height
+                / viewport.height
+              )
         )
             + viewBox.top
+            + viewport.y
+
+    -- + viewBox.top
     }
 
 

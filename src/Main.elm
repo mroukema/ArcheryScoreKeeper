@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Arrow exposing (arrow, selectedArrow)
+import Basics exposing (toFloat)
 import Browser
 import Browser.Dom as Dom
 import Browser.Events exposing (onResize)
@@ -13,6 +14,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as HtmlAttr
+import Json.Decode as Decode
 import Set exposing (Set)
 import String exposing (fromFloat)
 import Svg exposing (Svg, svg)
@@ -38,7 +40,11 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( initialModel, getViewport )
+    ( initialModel, getViewport targetLabel )
+
+
+targetLabel =
+    "TargetSvg"
 
 
 
@@ -48,18 +54,21 @@ init _ =
 type Msg
     = NoOp
     | WindowResize Int Int
-    | ViewportResult Dom.Viewport
+    | ViewportResult (Maybe Dom.Element)
     | SelectEnd Int
     | DeselectEnd Int
     | SelectShot (Maybe RecordId)
+    | ArrowDragStart RecordId
+    | ArrowDragMove RecordId Int IntPosition
+    | ArrowDragEnd RecordId
 
 
 type alias Model =
-    { viewport : Maybe Dom.Viewport
+    { viewport : Maybe Dom.Element
     , scorecard : Scorecard
     , selectedEnds : Set Int
     , selectedShot : Maybe RecordId
-    , tst : RecursiveDict Int String
+    , dragInProgresss : Bool
     }
 
 
@@ -70,7 +79,16 @@ type alias ViewModel =
     , selectedRecord : RecordSelection
     , selectedEnds : RecordCard
     , unselectedEnds : RecordCard
+    , dragInProgresss : Bool
     }
+
+
+type alias IntPosition =
+    { x : Int, y : Int }
+
+
+type alias FloatPosition =
+    { x : Float, y : Float }
 
 
 {-| Tuple where first element identifes a scorecard record and t is some info associated with it
@@ -161,6 +179,7 @@ type alias TargetData r =
         | viewsize : Element.Length
         , selectedEnds : RecordCard
         , shotSelection : RecordSelection
+        , dragInProgresss : Bool
     }
 
 
@@ -238,7 +257,7 @@ initialModel =
         )
         (Set.fromList [ 1 ])
         (Just ( 1, 2 ))
-        test
+        False
 
 
 
@@ -248,10 +267,10 @@ initialModel =
 update msg model =
     case msg of
         WindowResize x y ->
-            ( model, getViewport )
+            ( model, getViewport targetLabel )
 
         ViewportResult viewport ->
-            ( { model | viewport = Just viewport }, Cmd.none )
+            ( { model | viewport = viewport }, Cmd.none )
 
         SelectEnd index ->
             ( { model | selectedEnds = Set.insert index model.selectedEnds }, Cmd.none )
@@ -262,15 +281,82 @@ update msg model =
         SelectShot selection ->
             ( { model | selectedShot = selection }, Cmd.none )
 
+        ArrowDragStart recordId ->
+            ( { model | dragInProgresss = True }, Cmd.none )
+
+        ArrowDragMove recordId buttons pos ->
+            ( { model
+                | dragInProgresss = True
+                , scorecard =
+                    updateSelectedArrowPos model.scorecard
+                        recordId
+                        (Target.translateClientToSvgCoordinates
+                            Target.tenRingTarget.viewBox
+                            model.viewport
+                            pos
+                        )
+              }
+            , Cmd.none
+            )
+
+        ArrowDragEnd recordId ->
+            ( { model | dragInProgresss = False }, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
 
-getViewport =
-    Task.perform ViewportResult Dom.getViewport
+updateArrowPos : EndRecord -> FloatPosition -> EndRecord
+updateArrowPos record pos =
+    case record of
+        ShotRecord score shot ->
+            ShotRecord score { shot | pos = ( pos.x, pos.y ) }
+
+        _ ->
+            record
+
+
+updateSelectedArrowPos : Scorecard -> RecordId -> FloatPosition -> Scorecard
+updateSelectedArrowPos scores selectedRecordId newPosition =
+    scores
+        |> Dict.update (Tuple.first selectedRecordId)
+            (\maybeEnd ->
+                case maybeEnd of
+                    Just end ->
+                        Just <|
+                            Dict.update
+                                (Tuple.second selectedRecordId)
+                                (\maybeRecord ->
+                                    case maybeRecord of
+                                        Just record ->
+                                            Just <| updateArrowPos record newPosition
+
+                                        Maybe.Nothing ->
+                                            maybeRecord
+                                )
+                                end
+
+                    Maybe.Nothing ->
+                        Maybe.Nothing
+            )
+
+
+getViewport : String -> Cmd Msg
+getViewport elementName =
+    Task.attempt
+        (\result ->
+            case result of
+                Ok value ->
+                    ViewportResult (Just value)
+
+                Err error ->
+                    ViewportResult Maybe.Nothing
+        )
+        (Dom.getElement elementName)
 
 
 
+--Task.perform ViewportResult (Dom.getElement "TargetSvg")
 -- Custom Dict Functions
 
 
@@ -368,6 +454,7 @@ scorecardDataSelector model =
         selectedRecord
         selectedEnds
         unselectedEnds
+        model.dragInProgresss
 
 
 scorecard : ViewModel -> Html Msg
@@ -383,6 +470,7 @@ scorecard model =
                         { selectedEnds = model.selectedEnds
                         , viewsize = model.viewsize
                         , shotSelection = model.selectedRecord
+                        , dragInProgresss = model.dragInProgresss
                         }
                   ]
                 , targetScorecard model.unselectedEnds
@@ -415,7 +503,7 @@ excludeSelectedShot selectedShot ends =
 
 
 targetElement : TargetData r -> Element Msg
-targetElement { viewsize, selectedEnds, shotSelection } =
+targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
     let
         endShots =
             excludeSelectedShot shotSelection selectedEnds
@@ -429,10 +517,10 @@ targetElement { viewsize, selectedEnds, shotSelection } =
         , SvgAttr.height "100%"
         , SvgAttr.viewBox <|
             Target.viewBoxToAttributeString tenRingTarget.viewBox
-        , SvgAttr.id "TargetSvg"
+        , SvgAttr.id targetLabel
         ]
         [ tenRingTarget.view
-        , renderShots shotList shotSelection
+        , renderShots shotList shotSelection dragInProgresss
         ]
         |> Element.html
         |> Element.el
@@ -457,9 +545,34 @@ shotFromRecordSelection recordSelection =
             Maybe.Nothing
 
 
-renderShots : RecordList -> RecordSelection -> Svg Msg
-renderShots shots recordSelection =
+renderShots : RecordList -> RecordSelection -> Bool -> Svg Msg
+renderShots shots recordSelection dragInProgresss =
     let
+        selectedRecordId =
+            case recordSelection of
+                Selection id ->
+                    Tuple.first id
+
+                Nothing ->
+                    ( 0, 0 )
+
+        selectedArrowEvents =
+            case dragInProgresss of
+                False ->
+                    [ SvgEvents.onClick <| SelectShot Maybe.Nothing
+                    , SvgEvents.onMouseDown <| ArrowDragStart selectedRecordId
+                    ]
+
+                True ->
+                    [ SvgEvents.on "mousemove" <|
+                        Decode.map2
+                            (ArrowDragMove selectedRecordId)
+                            (Decode.field "buttons" Decode.int)
+                            (Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int))
+                    , SvgEvents.onMouseUp <| ArrowDragEnd selectedRecordId
+                    , SvgEvents.onMouseOut <| ArrowDragEnd selectedRecordId
+                    ]
+
         selectionArrow =
             case shotFromRecordSelection recordSelection of
                 Just selection ->
@@ -467,7 +580,7 @@ renderShots shots recordSelection =
                         Selection ( _, shot ) ->
                             [ selectedArrow
                                 shot
-                                [ SvgEvents.onClick <| SelectShot Maybe.Nothing ]
+                                selectedArrowEvents
                             ]
 
                         Nothing ->
