@@ -44,29 +44,11 @@ translateClientToSvgCoordinates viewBox maybeElement clientPos =
             elementDom.element
     in
     { x =
-        ((toFloat clientPos.x
-            - element.x
-         )
-            * (viewBox.width
-                / viewport.width
-              )
-        )
+        ((toFloat clientPos.x - element.x + viewport.x) * (viewBox.width / element.width))
             + viewBox.left
-            + viewport.x
-
-    -- + viewBox.left
     , y =
-        ((toFloat clientPos.y
-            - element.y
-         )
-            * (viewBox.height
-                / viewport.height
-              )
-        )
+        ((toFloat clientPos.y - element.y + viewport.y) * (viewBox.height / element.height))
             + viewBox.top
-            + viewport.y
-
-    -- + viewBox.top
     }
 
 
@@ -288,7 +270,13 @@ ringSpecToAttributeList ringSpec =
 
 centerCrossHair : Svg msg
 centerCrossHair =
-    Svg.path [ d "M -0.2 0 L 0.2 0 M 0 -0.2 L 0 0.2", stroke "black", strokeWidth "0.1", id "Center" ] []
+    Svg.path
+        [ d "M -0.2 0 L 0.2 0 M 0 -0.2 L 0 0.2"
+        , stroke "black"
+        , strokeWidth "0.1"
+        , id "Center"
+        ]
+        []
 
 
 target : Target msg

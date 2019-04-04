@@ -198,7 +198,7 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 1.0, 2.0 ))
+                        [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 0, 0 ))
                         , ShotRecord (Score "9" 9) (Shot arrowSpec ( 5, 4.8 ))
                         , ShotRecord (Score "9" 9) (Shot arrowSpec ( 3, 4 ))
                         ]
@@ -282,7 +282,7 @@ update msg model =
             ( { model | selectedShot = selection }, Cmd.none )
 
         ArrowDragStart recordId ->
-            ( { model | dragInProgresss = True }, Cmd.none )
+            ( { model | dragInProgresss = True }, getViewport targetLabel )
 
         ArrowDragMove recordId buttons pos ->
             ( { model
