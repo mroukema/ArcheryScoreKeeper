@@ -365,28 +365,6 @@ getViewport elementName =
         (Dom.getElement elementName)
 
 
-
--- Custom Dict Functions
-
-
-type RecursiveDict comparable a
-    = Node (Dict comparable (RecursiveDict comparable a))
-    | Leaf a
-
-
-test1 =
-    Node (Dict.singleton 2 (Node (Dict.singleton 1 (Leaf "hello"))))
-
-
-test =
-    case test1 of
-        Node dict ->
-            Node (Dict.insert 3 (Leaf "y") dict)
-
-        Leaf value ->
-            test1
-
-
 dictToNestedList keyMapper dictionary =
     dictionary
         |> Dict.map (\k v -> v |> Dict.mapKeys (keyMapper k) >> Dict.toList)
@@ -468,20 +446,30 @@ scorecardDataSelector model =
 
 scorecard : ViewModel -> Html Msg
 scorecard model =
-    Element.layout
-        [ Element.width model.viewsize ]
-        (Element.column
-            [ Element.spacing 1
-            ]
-            (List.concat
-                [ renderSelectedEnds model.selectedEnds model.selectedRecord
-                , [ targetElement
+    let
+        targetView =
+            case (not << Dict.isEmpty) model.selectedEnds of
+                True ->
+                    [ targetElement
                         { selectedEnds = model.selectedEnds
                         , viewsize = model.viewsize
                         , shotSelection = model.selectedRecord
                         , dragInProgresss = model.dragInProgresss
                         }
-                  ]
+                    ]
+
+                False ->
+                    []
+    in
+    Element.layout
+        []
+        (Element.column
+            [ Element.spacing 1
+            , Element.width model.viewsize
+            ]
+            (List.concat
+                [ renderSelectedEnds model.selectedEnds model.selectedRecord
+                , targetView
                 , targetScorecard model.unselectedEnds
                 ]
             )
@@ -525,8 +513,8 @@ targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
         eventAttr =
             case dragInProgresss of
                 True ->
-                    [ SvgEvents.on "mousemove" <|
-                        Decode.map2
+                    [ SvgEvents.on "mousemove"
+                        (Decode.map2
                             (ArrowDragMove selectedRecordId)
                             (Decode.field "buttons" Decode.int)
                             (Decode.map2
@@ -534,6 +522,7 @@ targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
                                 (Decode.field "clientX" Decode.int)
                                 (Decode.field "clientY" Decode.int)
                             )
+                        )
                     , SvgEvents.onMouseUp <| ArrowDragEnd selectedRecordId
                     ]
 
