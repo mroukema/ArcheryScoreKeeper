@@ -282,7 +282,12 @@ update msg model =
             ( { model | selectedShot = selection }, Cmd.none )
 
         ArrowDragStart recordId ->
-            ( { model | dragInProgresss = True }, getViewport targetLabel )
+            ( { model
+                | dragInProgresss = True
+                , selectedShot = Just recordId
+              }
+            , getViewport targetLabel
+            )
 
         ArrowDragMove recordId buttons pos ->
             ( { model
@@ -300,7 +305,12 @@ update msg model =
             )
 
         ArrowDragEnd recordId ->
-            ( { model | dragInProgresss = False }, Cmd.none )
+            ( { model
+                | dragInProgresss = False
+                , selectedShot = Maybe.Nothing
+              }
+            , Cmd.none
+            )
 
         NoOp ->
             ( model, Cmd.none )
@@ -356,7 +366,6 @@ getViewport elementName =
 
 
 
---Task.perform ViewportResult (Dom.getElement "TargetSvg")
 -- Custom Dict Functions
 
 
@@ -505,6 +514,32 @@ excludeSelectedShot selectedShot ends =
 targetElement : TargetData r -> Element Msg
 targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
     let
+        selectedRecordId =
+            case shotSelection of
+                Selection id ->
+                    Tuple.first id
+
+                Nothing ->
+                    ( 0, 0 )
+
+        eventAttr =
+            case dragInProgresss of
+                True ->
+                    [ SvgEvents.on "mousemove" <|
+                        Decode.map2
+                            (ArrowDragMove selectedRecordId)
+                            (Decode.field "buttons" Decode.int)
+                            (Decode.map2
+                                IntPosition
+                                (Decode.field "clientX" Decode.int)
+                                (Decode.field "clientY" Decode.int)
+                            )
+                    , SvgEvents.onMouseUp <| ArrowDragEnd selectedRecordId
+                    ]
+
+                False ->
+                    []
+
         endShots =
             excludeSelectedShot shotSelection selectedEnds
 
@@ -512,13 +547,16 @@ targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
             Dict.toList endShots
     in
     svg
-        [ SvgAttr.version "1.1"
-        , SvgAttr.width "100%"
-        , SvgAttr.height "100%"
-        , SvgAttr.viewBox <|
-            Target.viewBoxToAttributeString tenRingTarget.viewBox
-        , SvgAttr.id targetLabel
-        ]
+        (List.append
+            [ SvgAttr.version "1.1"
+            , SvgAttr.width "100%"
+            , SvgAttr.height "100%"
+            , SvgAttr.viewBox <|
+                Target.viewBoxToAttributeString tenRingTarget.viewBox
+            , SvgAttr.id targetLabel
+            ]
+            eventAttr
+        )
         [ tenRingTarget.view
         , renderShots shotList shotSelection dragInProgresss
         ]
@@ -545,6 +583,22 @@ shotFromRecordSelection recordSelection =
             Maybe.Nothing
 
 
+onMouseDownMove : Decode.Decoder msg -> Svg.Attribute msg
+onMouseDownMove decoder =
+    SvgEvents.on "mousemove"
+        (Decode.field "buttons" Decode.int
+            |> Decode.andThen
+                (\buttons ->
+                    case buttons > 0 of
+                        True ->
+                            decoder
+
+                        False ->
+                            Decode.fail "Mouse buttons not pressed"
+                )
+        )
+
+
 renderShots : RecordList -> RecordSelection -> Bool -> Svg Msg
 renderShots shots recordSelection dragInProgresss =
     let
@@ -560,18 +614,11 @@ renderShots shots recordSelection dragInProgresss =
             case dragInProgresss of
                 False ->
                     [ SvgEvents.onClick <| SelectShot Maybe.Nothing
-                    , SvgEvents.onMouseDown <| ArrowDragStart selectedRecordId
+                    , onMouseDownMove <| Decode.succeed (ArrowDragStart selectedRecordId)
                     ]
 
                 True ->
-                    [ SvgEvents.on "mousemove" <|
-                        Decode.map2
-                            (ArrowDragMove selectedRecordId)
-                            (Decode.field "buttons" Decode.int)
-                            (Decode.map2 IntPosition (Decode.field "clientX" Decode.int) (Decode.field "clientY" Decode.int))
-                    , SvgEvents.onMouseUp <| ArrowDragEnd selectedRecordId
-                    , SvgEvents.onMouseOut <| ArrowDragEnd selectedRecordId
-                    ]
+                    []
 
         selectionArrow =
             case shotFromRecordSelection recordSelection of
@@ -597,7 +644,8 @@ renderShots shots recordSelection dragInProgresss =
                         ShotRecord score shot ->
                             arrow
                                 shot
-                                [ SvgEvents.onClick <| SelectShot <| Just recordId ]
+                                [ SvgEvents.onMouseDown <| SelectShot <| Just recordId
+                                ]
 
                         _ ->
                             Svg.g [] []
