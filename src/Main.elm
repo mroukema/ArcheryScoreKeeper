@@ -22,7 +22,7 @@ import String exposing (fromFloat)
 import Svg exposing (Svg, svg)
 import Svg.Attributes as SvgAttr
 import Svg.Events as SvgEvents
-import Target exposing (tenRingTarget)
+import Target exposing (ScoreTarget, tenRingTarget)
 import Task
 
 
@@ -171,41 +171,25 @@ ScoringTarget can either
 
 -}
 type ScoringTarget
-    = BuiltIn TargetName ScoringOptions
-    | Custom Target.TargetSpec ScoringOptions
+    = BuiltIn TargetName
+    | Custom ScoreTarget
 
 
 type alias TargetName =
     String
 
 
-tenRingScoreTarget =
-    BuiltIn "Ten Ring" { lineBreak = Target.up, inner10s = False, innerXs = True }
+tenRingBuiltin =
+    BuiltIn "Ten Ring"
 
 
 {-| The map of built in targets specifications (as opposed to custom taret)
 -}
-builtInTargets : Dict TargetName Target.TargetSpec
+builtInTargets : Dict TargetName ScoreTarget
 builtInTargets =
-    let
-        baseList =
-            Dict.fromList
-                [ ( "Ten Ring", tenRingTarget.spec )
-                , ( "None", [] )
-                ]
-
-        default =
-            case Dict.get "Ten Ring" baseList of
-                Just value ->
-                    value
-
-                Maybe.Nothing ->
-                    []
-
-        targetListWithDefault =
-            Dict.insert "Default" default baseList
-    in
-    targetListWithDefault
+    Dict.fromList
+        [ ( "Ten Ring", Target.tenRingScoreTarget )
+        ]
 
 
 
@@ -244,9 +228,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ShotRecord (Score "10" 10) (Shot arrowSpec { x = 0, y = 0 }) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 5, y = 4.8 }) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 3, y = 4 }) tenRingScoreTarget
+                        [ ShotRecord (Score "10" 10) (Shot arrowSpec { x = 0, y = 0 }) tenRingBuiltin
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 5, y = 4.8 }) tenRingBuiltin
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 3, y = 4 }) tenRingBuiltin
                         ]
               )
             , ( 2
@@ -254,9 +238,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ShotRecord (Score "X" 10) (Shot arrowSpec { x = 0.3, y = 0.2 }) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = -4.0, y = 3.8 }) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = -2.1, y = -4.2 }) tenRingScoreTarget
+                        [ ShotRecord (Score "X" 10) (Shot arrowSpec { x = 0.3, y = 0.2 }) tenRingBuiltin
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = -4.0, y = 3.8 }) tenRingBuiltin
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = -2.1, y = -4.2 }) tenRingBuiltin
                         ]
               )
             , ( 3
@@ -363,9 +347,9 @@ update msg model =
             ( model, Cmd.none )
 
 
-scoreShotAtPosition : Target.TargetSpec -> ScoringOptions -> Shot -> Score
-scoreShotAtPosition target scoringOptions shot =
-    Target.scorePos target scoringOptions shot
+scoreShotAtPosition : ScoreTarget -> Shot -> Score
+scoreShotAtPosition scoreTarget shot =
+    Target.scorePos scoreTarget shot
 
 
 updateArrowPos : EndRecord -> FloatPosition -> EndRecord
@@ -377,22 +361,22 @@ updateArrowPos record pos =
                     { shot | pos = pos }
             in
             case target of
-                BuiltIn targetName options ->
+                BuiltIn targetName ->
                     case Dict.get targetName builtInTargets of
-                        Just targetSpec ->
+                        Just scoreTarget ->
                             ShotRecord
-                                (scoreShotAtPosition targetSpec options updatedShot)
+                                (scoreShotAtPosition scoreTarget updatedShot)
                                 updatedShot
-                                tenRingScoreTarget
+                                tenRingBuiltin
 
                         Maybe.Nothing ->
                             record
 
-                Custom targetSpec options ->
+                Custom scoreTarget ->
                     ShotRecord
-                        (scoreShotAtPosition targetSpec options updatedShot)
+                        (scoreShotAtPosition scoreTarget updatedShot)
                         updatedShot
-                        tenRingScoreTarget
+                        tenRingBuiltin
 
         _ ->
             record

@@ -1,4 +1,4 @@
-module Target exposing (LineBreakOption, Target, TargetSpec, center, defaultScoringOptions, down, scorePos, tenRingTarget, translateClientToSvgCoordinates, up, viewBoxToAttributeString)
+module Target exposing (LineBreakOption, ScoreTarget, Target, TargetSpec, center, defaultScoringOptions, down, scorePos, tenRingScoreTarget, tenRingTarget, translateClientToSvgCoordinates, up, viewBoxToAttributeString)
 
 import Browser.Dom as Dom
 import Score exposing (Score)
@@ -108,9 +108,8 @@ type alias ScoringOptions =
     }
 
 
-type alias ScoreTarget msg =
-    { view : Svg msg
-    , spec : TargetSpec
+type alias ScoreTarget =
+    { spec : TargetSpec
     , viewBox : ViewBox
     , scoringOptions : ScoringOptions
     }
@@ -124,11 +123,11 @@ defaultScoringOptions =
     }
 
 
-scorePos : TargetSpec -> ScoringOptions -> Shot -> Score
-scorePos targetSpec options shot =
-    targetSpec
+scorePos : ScoreTarget -> Shot -> Score
+scorePos scoreTarget shot =
+    scoreTarget.spec
         |> List.foldr
-            (foldOp options shot)
+            (foldOp scoreTarget.scoringOptions shot)
             (Score "M" 0)
 
 
@@ -295,6 +294,13 @@ target =
 tenRingTarget : Target msg
 tenRingTarget =
     { view = targetGenerator tenRingSpec
+    , spec = tenRingSpec
+    , viewBox = ViewBox -45 -45 90 90
+    }
+
+
+tenRingScoreTarget =
+    { scoringOptions = ScoringOptions Up False True
     , spec = tenRingSpec
     , viewBox = ViewBox -45 -45 90 90
     }
