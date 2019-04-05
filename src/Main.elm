@@ -72,7 +72,7 @@ type alias Model =
     }
 
 
-{-| The information used to render the view. Derive from model.
+{-| The information used to render the view. Derived from model.
 -}
 type alias ViewModel =
     { viewsize : Element.Length
@@ -125,12 +125,15 @@ type alias Score =
 
 
 {-| Data for one arrow of an End.
-Record can be empty or it can contain a score.
-Optionally can there can be a record of the shot associated with the score
+
+  - Record can be empty or it can contain a score.
+  - Optionally can there can be a record of the shot, target and scoring rules
+    associated with the score
+
 -}
 type EndRecord
     = ScoreRecord Score
-    | ShotRecord Score Shot
+    | ShotRecord Score Shot ScoringTarget
     | EmptyRecord
 
 
@@ -150,6 +153,8 @@ type alias End =
     Dict ShotId EndRecord
 
 
+{-| Description of an arrow (radius)
+-}
 type alias ArrowSpec =
     Float
 
@@ -160,6 +165,69 @@ type alias Shot =
     { arrow : ArrowSpec
     , pos : ( Float, Float )
     }
+
+
+
+{- The different ways shot breaking lines can be scored -}
+-- type LineBreakOption =
+--     Target.LineBreakOption
+
+
+{-| Record with the various different scoring rules that may be
+applied to a shot when calculating it's score
+-}
+type alias ScoringOptions =
+    { lineBreak : Target.LineBreakOption
+    , inner10s : Bool
+    , innerXs : Bool
+    }
+
+
+{-| TargetSpec with the info needed to associate scores with positions on it.
+
+ScoringTarget can either
+
+  - contain a a target spec + scoring options
+  - contain target name (string) + scoring options; target spec will be resolved
+    by lookup in builtInTargets
+
+-}
+type ScoringTarget
+    = BuiltIn TargetName ScoringOptions
+    | Custom Target.TargetSpec ScoringOptions
+
+
+type alias TargetName =
+    String
+
+
+tenRingScoreTarget =
+    BuiltIn "Ten Ring" { lineBreak = Target.up, inner10s = False, innerXs = True }
+
+
+{-| The map of built in targets specifications (as opposed to custom taret)
+-}
+builtInTargets : Dict TargetName Target.TargetSpec
+builtInTargets =
+    let
+        baseList =
+            Dict.fromList
+                [ ( "Ten Ring", tenRingTarget.spec )
+                , ( "None", [] )
+                ]
+
+        default =
+            case Dict.get "Ten Ring" baseList of
+                Just value ->
+                    value
+
+                Maybe.Nothing ->
+                    []
+
+        targetListWithDefault =
+            Dict.insert "Default" default baseList
+    in
+    targetListWithDefault
 
 
 
@@ -198,9 +266,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 0, 0 ))
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 5, 4.8 ))
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 3, 4 ))
+                        [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 0, 0 )) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 5, 4.8 )) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 3, 4 )) tenRingScoreTarget
                         ]
               )
             , ( 2
@@ -208,9 +276,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ShotRecord (Score "X" 10) (Shot arrowSpec ( 0.3, 0.2 ))
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -4.0, 3.8 ))
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -2.1, -4.2 ))
+                        [ ShotRecord (Score "X" 10) (Shot arrowSpec ( 0.3, 0.2 )) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -4.0, 3.8 )) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -2.1, -4.2 )) tenRingScoreTarget
                         ]
               )
             , ( 3
@@ -316,11 +384,32 @@ update msg model =
             ( model, Cmd.none )
 
 
+scoreShotAtPosition : Target.TargetSpec -> ScoringOptions -> FloatPosition -> Score
+scoreShotAtPosition target scoringOptions pos =
+    Target.scorePos target scoringOptions 0.65 pos
+
+
 updateArrowPos : EndRecord -> FloatPosition -> EndRecord
 updateArrowPos record pos =
     case record of
-        ShotRecord score shot ->
-            ShotRecord score { shot | pos = ( pos.x, pos.y ) }
+        ShotRecord score shot target ->
+            case target of
+                BuiltIn targetName options ->
+                    case Dict.get targetName builtInTargets of
+                        Just targetSpec ->
+                            ShotRecord
+                                (scoreShotAtPosition targetSpec options pos)
+                                { shot | pos = ( pos.x, pos.y ) }
+                                tenRingScoreTarget
+
+                        Maybe.Nothing ->
+                            record
+
+                Custom targetSpec options ->
+                    ShotRecord
+                        (scoreShotAtPosition targetSpec options pos)
+                        { shot | pos = ( pos.x, pos.y ) }
+                        tenRingScoreTarget
 
         _ ->
             record
@@ -461,8 +550,7 @@ scorecard model =
                 False ->
                     []
     in
-    Element.layout
-        []
+    Element.layout []
         (Element.column
             [ Element.spacing 1
             , Element.width model.viewsize
@@ -562,7 +650,7 @@ shotFromRecordSelection recordSelection =
     case recordSelection of
         Selection ( recordId, record ) ->
             case record of
-                ShotRecord _ shot ->
+                ShotRecord _ shot _ ->
                     Just <| Selection ( recordId, shot )
 
                 _ ->
@@ -630,7 +718,7 @@ renderShots shots recordSelection dragInProgresss =
             (List.map
                 (\( recordId, record ) ->
                     case record of
-                        ShotRecord score shot ->
+                        ShotRecord score shot _ ->
                             arrow
                                 shot
                                 [ SvgEvents.onMouseDown <| SelectShot <| Just recordId
@@ -773,7 +861,7 @@ renderScore style ( recordId, record ) =
         EmptyRecord ->
             Element.el style <| text "-"
 
-        ShotRecord score _ ->
+        ShotRecord score _ _ ->
             Element.el
                 ((Element.onClick <| SelectShot (Just recordId)) :: style)
                 (text score.label)
