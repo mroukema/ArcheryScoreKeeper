@@ -151,12 +151,6 @@ type alias End =
     Dict ShotId EndRecord
 
 
-
-{- The different ways shot breaking lines can be scored -}
--- type LineBreakOption =
---     Target.LineBreakOption
-
-
 {-| Record with the various different scoring rules that may be
 applied to a shot when calculating it's score
 -}
@@ -316,6 +310,7 @@ initialModel =
 -- Update
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         WindowResize x y ->
@@ -475,6 +470,7 @@ subscriptions model =
 --  View
 
 
+view : Model -> Html Msg
 view =
     scorecard << scorecardDataSelector
 
@@ -552,6 +548,7 @@ scorecard model =
         )
 
 
+viewportSize : Maybe Dom.Element -> Element.Length
 viewportSize maybeViewport =
     case maybeViewport of
         Just value ->

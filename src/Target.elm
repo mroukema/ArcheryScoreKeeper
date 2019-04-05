@@ -81,6 +81,8 @@ type alias ArrowSpec =
     Float
 
 
+{-| The different ways shot breaking lines can be scored
+-}
 type LineBreakOption
     = Up
     | Down
