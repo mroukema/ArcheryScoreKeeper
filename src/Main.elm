@@ -132,7 +132,6 @@ type alias Score =
 type EndRecord
     = ScoreRecord Score
     | ShotRecord Score Shot ScoringTarget
-    | EmptyRecord
 
 
 type alias EndId =
@@ -201,6 +200,7 @@ type alias EndStyle r =
         | row : List (Element.Attribute Msg)
         , id : List (Element.Attribute Msg)
         , score : List (Element.Attribute Msg)
+        , total : List (Element.Attribute Msg)
     }
 
 
@@ -211,6 +211,10 @@ type alias TargetData r =
         , shotSelection : RecordSelection
         , dragInProgresss : Bool
     }
+
+
+emptyShotRecord =
+    ScoreRecord <| Score "-" 0
 
 
 arrowSpec : ArrowSpec
@@ -227,9 +231,9 @@ initialModel =
               , Dict.fromList <|
                     List.map2
                         Tuple.pair
-                        (List.range 1 3)
-                        [ ShotRecord (Score "10" 10) (Shot arrowSpec { x = 0, y = 0 }) tenRingBuiltin
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 5, y = 4.8 }) tenRingBuiltin
+                        (List.range 1 4)
+                        [ ShotRecord (Score "X" 10) (Shot arrowSpec { x = 0, y = 0 }) tenRingBuiltin
+                        , ShotRecord (Score "10" 10) (Shot arrowSpec { x = 1, y = 1.4 }) tenRingBuiltin
                         , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 3, y = 4 }) tenRingBuiltin
                         ]
               )
@@ -268,9 +272,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ScoreRecord (Score "9" 10)
-                        , EmptyRecord
-                        , EmptyRecord
+                        [ ScoreRecord (Score "9" 9)
+                        , emptyShotRecord
+                        , emptyShotRecord
                         ]
               )
             , ( 6
@@ -278,9 +282,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ EmptyRecord
-                        , EmptyRecord
-                        , EmptyRecord
+                        [ emptyShotRecord
+                        , emptyShotRecord
+                        , emptyShotRecord
                         ]
               )
             ]
@@ -525,11 +529,34 @@ scorecard model =
             ]
             (List.concat
                 [ renderSelectedEnds model.selectedEnds model.selectedRecord
+                , [ renderEndlistTotal model.selectedEnds model.viewsize ]
                 , targetView
                 , targetScorecard model.unselectedEnds
                 ]
             )
         )
+
+
+renderEndlistTotal selectedEnds viewsize =
+    let
+        total =
+            selectedEnds
+                |> Dict.toList
+                |> List.map (Tuple.second >> toRecordValue)
+                |> List.sum
+    in
+    Element.row
+        [ Element.width viewsize
+        ]
+        [ Element.el
+            [ Element.alignRight
+            , Element.paddingEach { top = 0, right = 12, bottom = 0, left = 0 }
+            , Font.color <| rgb255 0 0 0
+            ]
+            (text <|
+                String.fromInt total
+            )
+        ]
 
 
 viewportSize : Maybe Dom.Element -> Element.Length
@@ -741,6 +768,11 @@ baseEndStyle =
         [ Element.width fill
         , Font.center
         ]
+    , total =
+        [ Element.alignRight
+        , Element.paddingEach { top = 0, right = 12, bottom = 0, left = 0 }
+        , Font.center
+        ]
     }
 
 
@@ -760,6 +792,11 @@ selectedEndStyle endIndex =
         , score =
             List.append
                 baseEndStyle.score
+                [ Font.color <| rgb255 255 255 255
+                ]
+        , total =
+            List.append
+                baseEndStyle.total
                 [ Font.color <| rgb255 255 255 255
                 ]
     }
@@ -784,7 +821,9 @@ renderSelectedEnd end =
     let
         -- TODO improve
         endId =
-            List.head end |> Maybe.andThen (Just << Tuple.first << Tuple.first) |> Maybe.withDefault 0
+            List.head end
+                |> Maybe.andThen (Just << Tuple.first << Tuple.first)
+                |> Maybe.withDefault 0
     in
     renderScoringEnd (selectedEndStyle endId) end
 
@@ -794,7 +833,9 @@ renderUnselectedEnd end =
     let
         -- TODO improve
         endId =
-            List.head end |> Maybe.andThen (Just << Tuple.first << Tuple.first) |> Maybe.withDefault 0
+            List.head end
+                |> Maybe.andThen (Just << Tuple.first << Tuple.first)
+                |> Maybe.withDefault 0
     in
     renderScoringEnd (unselectedEndStyle endId) end
 
@@ -804,10 +845,15 @@ renderScoringEnd endStyle end =
     let
         -- TODO improve
         endId =
-            List.head end |> Maybe.andThen (Just << Tuple.first << Tuple.first) |> Maybe.withDefault 0
+            List.head end
+                |> Maybe.andThen (Just << Tuple.first << Tuple.first)
+                |> Maybe.withDefault 0
     in
-    endNumber endStyle.id endId
-        :: renderScores endStyle.score end
+    List.concat
+        [ [ endNumber endStyle.id endId ]
+        , renderScores endStyle.score end
+        , [ endTotal endStyle.total end ]
+        ]
         |> Element.row endStyle.row
 
 
@@ -819,6 +865,25 @@ endNumber style num =
         |> Element.el style
 
 
+toRecordValue record =
+    case record of
+        ScoreRecord score ->
+            score.value
+
+        ShotRecord score _ _ ->
+            score.value
+
+
+endTotal : List (Element.Attribute msg) -> RecordList -> Element msg
+endTotal style end =
+    end
+        |> List.map (Tuple.second >> toRecordValue)
+        |> List.sum
+        |> String.fromInt
+        |> Element.text
+        |> Element.el style
+
+
 renderScores : List (Element.Attribute Msg) -> RecordList -> List (Element Msg)
 renderScores style end =
     List.map (renderScore style) end
@@ -827,9 +892,6 @@ renderScores style end =
 renderScore : List (Element.Attribute Msg) -> ( RecordId, EndRecord ) -> Element Msg
 renderScore style ( recordId, record ) =
     case record of
-        EmptyRecord ->
-            Element.el style <| text "-"
-
         ShotRecord score _ _ ->
             Element.el
                 ((Element.onClick <| SelectShot (Just recordId)) :: style)
