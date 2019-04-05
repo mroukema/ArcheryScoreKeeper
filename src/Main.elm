@@ -889,13 +889,36 @@ renderScores style end =
     List.map (renderScore style) end
 
 
+renderPosInfo pos =
+    Element.column
+        [ height (33 |> px)
+        , Font.size 10
+        , Font.alignLeft
+        , Element.paddingXY 6 0
+        , Element.spacing 2
+        , Font.color <| rgb255 190 190 190
+        ]
+        [ Element.text <| "x: " ++ (String.left 4 <| String.fromFloat pos.x)
+        , Element.text <| "y: " ++ (String.left 4 <| String.fromFloat pos.y)
+        ]
+
+
 renderScore : List (Element.Attribute Msg) -> ( RecordId, EndRecord ) -> Element Msg
 renderScore style ( recordId, record ) =
     case record of
-        ShotRecord score _ _ ->
+        ShotRecord score shot _ ->
             Element.el
-                ((Element.onClick <| SelectShot (Just recordId)) :: style)
-                (text score.label)
+                (List.append
+                    [ Element.onClick <| SelectShot (Just recordId)
+                    ]
+                    style
+                )
+                (Element.el
+                    [ Element.centerX
+                    , Element.onRight (renderPosInfo shot.pos)
+                    ]
+                    (text score.label)
+                )
 
         ScoreRecord score ->
             Element.el style (text score.label)
