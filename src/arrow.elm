@@ -1,6 +1,7 @@
-module Arrow exposing (ArrowSpec, FloatPosition, Msg, arrow, arrowBase, defaultArrow, selectedArrow, update)
+module Arrow exposing (ArrowSpec, Msg, arrow, arrowBase, defaultArrow, selectedArrow, update)
 
 import Json.Decode as Decode
+import Shot exposing (FloatPosition, Shot)
 import String exposing (fromFloat)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -25,16 +26,8 @@ update msg model =
             ( model, Cmd.none )
 
 
-type alias FloatPosition =
-    { x : Float, y : Float }
-
-
-type alias Shot =
-    { arrow : ArrowSpec
-    , pos : ( Float, Float )
-    }
-
-
+{-| Description of an arrow (radius)
+-}
 type alias ArrowSpec =
     Float
 
@@ -47,7 +40,7 @@ defaultArrow =
 selectedArrow shot attr =
     let
         ( x, y ) =
-            shot.pos
+            ( shot.pos.x, shot.pos.y )
     in
     Svg.g
         (List.append
@@ -71,7 +64,7 @@ arrow : Shot -> List (Attribute msg) -> Svg msg
 arrow shot attr =
     let
         ( x, y ) =
-            shot.pos
+            ( shot.pos.x, shot.pos.y )
     in
     Svg.g
         (List.append
@@ -93,7 +86,7 @@ selectionHighlight radius =
     [ Svg.circle
         [ cx "0"
         , cy "0"
-        , r (radius * 1.65 |> fromFloat)
+        , r (radius * 1.7 |> fromFloat)
         , fill "blue"
         , opacity ".4"
         , id "selectedHighlight"

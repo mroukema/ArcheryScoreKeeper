@@ -1,7 +1,8 @@
 module Target exposing (LineBreakOption, Target, TargetSpec, center, defaultScoringOptions, down, scorePos, tenRingTarget, translateClientToSvgCoordinates, up, viewBoxToAttributeString)
 
-import Arrow exposing (ArrowSpec)
 import Browser.Dom as Dom
+import Score exposing (Score)
+import Shot exposing (FloatPosition, Shot)
 import String exposing (fromFloat, fromInt)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -58,10 +59,6 @@ type alias IntPosition =
     }
 
 
-type alias FloatPosition =
-    { x : Float, y : Float }
-
-
 type alias BoundingBox =
     { bottom : Float
     , height : Float
@@ -80,16 +77,8 @@ type alias ViewBox =
     }
 
 
-type alias Shot =
-    { arrow : ArrowSpec
-    , score : Score
-    }
-
-
-type alias Score =
-    { label : String
-    , value : Int
-    }
+type alias ArrowSpec =
+    Float
 
 
 type LineBreakOption
@@ -117,6 +106,14 @@ type alias ScoringOptions =
     }
 
 
+type alias ScoreTarget msg =
+    { view : Svg msg
+    , spec : TargetSpec
+    , viewBox : ViewBox
+    , scoringOptions : ScoringOptions
+    }
+
+
 defaultScoringOptions : ScoringOptions
 defaultScoringOptions =
     { lineBreak = Up
@@ -125,33 +122,45 @@ defaultScoringOptions =
     }
 
 
-scorePos : TargetSpec -> ScoringOptions -> Float -> FloatPosition -> Score
-scorePos targetSpec options arrowRadius pos =
+scorePos : TargetSpec -> ScoringOptions -> Shot -> Score
+scorePos targetSpec options shot =
     targetSpec
         |> List.foldr
-            (foldOp options arrowRadius pos)
+            (foldOp options shot)
             (Score "M" 0)
 
 
-foldOp : ScoringOptions -> Float -> FloatPosition -> TargetRingSpec -> Score -> Score
-foldOp options arrowRadius pos targetRingSpec currentScore =
+foldOp : ScoringOptions -> Shot -> TargetRingSpec -> Score -> Score
+foldOp options shot targetRingSpec outputScore =
     let
-        lineBreak =
-            getLineBreakOptionForCurrentRing options targetRingSpec
+        lineBreakDistanceCorrection =
+            case getLineBreakBehaviour options targetRingSpec of
+                Up ->
+                    (+) (Basics.negate shot.arrowRadius)
+
+                Down ->
+                    (+) shot.arrowRadius
+
+                Center ->
+                    Basics.identity
+
+        correctedShotDistance =
+            distanceFromCenter shot.pos
+                |> lineBreakDistanceCorrection
     in
     case
-        withinRingBounds lineBreak arrowRadius targetRingSpec.radius pos
-            && targetScoreGreater targetRingSpec currentScore
+        (targetRingSpec.score.value > outputScore.value)
+            && (targetRingSpec.radius > correctedShotDistance)
     of
         True ->
             targetRingSpec.score
 
         False ->
-            currentScore
+            outputScore
 
 
-getLineBreakOptionForCurrentRing : ScoringOptions -> TargetRingSpec -> LineBreakOption
-getLineBreakOptionForCurrentRing options targetRingSpec =
+getLineBreakBehaviour : ScoringOptions -> TargetRingSpec -> LineBreakOption
+getLineBreakBehaviour options targetRingSpec =
     case targetRingSpec.score.label of
         "X" ->
             if options.innerXs then
@@ -176,28 +185,9 @@ targetScoreGreater targetSpec currentScore =
     targetSpec.score.value > currentScore.value
 
 
-withinRingBounds : LineBreakOption -> Float -> Float -> FloatPosition -> Bool
-withinRingBounds lineBreak arrowRadius targetRingRadius pos =
-    let
-        lineBreakDistanceCorrection =
-            case lineBreak of
-                Up ->
-                    Basics.negate arrowRadius
-
-                Down ->
-                    arrowRadius
-
-                Center ->
-                    0
-    in
-    targetRingRadius > (distanceFromCenter pos + lineBreakDistanceCorrection)
-
-
-compareShot : Arrow.ArrowSpec -> Shot
-compareShot arrow =
-    Shot
-        arrow
-        (Score "M" 0)
+withinRingBounds : Float -> Float -> Bool
+withinRingBounds centerDistance targetRingRadius =
+    targetRingRadius > centerDistance
 
 
 distanceFromCenter : FloatPosition -> Float

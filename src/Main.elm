@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Arrow exposing (arrow, selectedArrow)
+import Arrow exposing (ArrowSpec, arrow, selectedArrow)
 import Basics exposing (toFloat)
 import Browser
 import Browser.Dom as Dom
@@ -15,7 +15,9 @@ import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as HtmlAttr
 import Json.Decode as Decode
+import Score exposing (Score)
 import Set exposing (Set)
+import Shot exposing (FloatPosition, Shot)
 import String exposing (fromFloat)
 import Svg exposing (Svg, svg)
 import Svg.Attributes as SvgAttr
@@ -87,10 +89,6 @@ type alias IntPosition =
     { x : Int, y : Int }
 
 
-type alias FloatPosition =
-    { x : Float, y : Float }
-
-
 {-| Tuple where first element identifes a scorecard record and t is some info associated with it
 -}
 type ScorecardSelection t
@@ -151,20 +149,6 @@ type alias Scorecard =
 
 type alias End =
     Dict ShotId EndRecord
-
-
-{-| Description of an arrow (radius)
--}
-type alias ArrowSpec =
-    Float
-
-
-{-| Describes where the shot landed on target and what sort of arrow was used
--}
-type alias Shot =
-    { arrow : ArrowSpec
-    , pos : ( Float, Float )
-    }
 
 
 
@@ -266,9 +250,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ShotRecord (Score "10" 10) (Shot arrowSpec ( 0, 0 )) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 5, 4.8 )) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( 3, 4 )) tenRingScoreTarget
+                        [ ShotRecord (Score "10" 10) (Shot arrowSpec { x = 0, y = 0 }) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 5, y = 4.8 }) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = 3, y = 4 }) tenRingScoreTarget
                         ]
               )
             , ( 2
@@ -276,9 +260,9 @@ initialModel =
                     List.map2
                         Tuple.pair
                         (List.range 1 3)
-                        [ ShotRecord (Score "X" 10) (Shot arrowSpec ( 0.3, 0.2 )) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -4.0, 3.8 )) tenRingScoreTarget
-                        , ShotRecord (Score "9" 9) (Shot arrowSpec ( -2.1, -4.2 )) tenRingScoreTarget
+                        [ ShotRecord (Score "X" 10) (Shot arrowSpec { x = 0.3, y = 0.2 }) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = -4.0, y = 3.8 }) tenRingScoreTarget
+                        , ShotRecord (Score "9" 9) (Shot arrowSpec { x = -2.1, y = -4.2 }) tenRingScoreTarget
                         ]
               )
             , ( 3
@@ -384,22 +368,26 @@ update msg model =
             ( model, Cmd.none )
 
 
-scoreShotAtPosition : Target.TargetSpec -> ScoringOptions -> FloatPosition -> Score
-scoreShotAtPosition target scoringOptions pos =
-    Target.scorePos target scoringOptions 0.65 pos
+scoreShotAtPosition : Target.TargetSpec -> ScoringOptions -> Shot -> Score
+scoreShotAtPosition target scoringOptions shot =
+    Target.scorePos target scoringOptions shot
 
 
 updateArrowPos : EndRecord -> FloatPosition -> EndRecord
 updateArrowPos record pos =
     case record of
         ShotRecord score shot target ->
+            let
+                updatedShot =
+                    { shot | pos = pos }
+            in
             case target of
                 BuiltIn targetName options ->
                     case Dict.get targetName builtInTargets of
                         Just targetSpec ->
                             ShotRecord
-                                (scoreShotAtPosition targetSpec options pos)
-                                { shot | pos = ( pos.x, pos.y ) }
+                                (scoreShotAtPosition targetSpec options updatedShot)
+                                updatedShot
                                 tenRingScoreTarget
 
                         Maybe.Nothing ->
@@ -407,8 +395,8 @@ updateArrowPos record pos =
 
                 Custom targetSpec options ->
                     ShotRecord
-                        (scoreShotAtPosition targetSpec options pos)
-                        { shot | pos = ( pos.x, pos.y ) }
+                        (scoreShotAtPosition targetSpec options updatedShot)
+                        updatedShot
                         tenRingScoreTarget
 
         _ ->
