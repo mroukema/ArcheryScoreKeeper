@@ -545,18 +545,18 @@ renderEndlistTotal selectedEnds viewsize =
                 |> List.map (Tuple.second >> toRecordValue)
                 |> List.sum
     in
-    Element.row
+    Element.el
         [ Element.width viewsize
-        ]
-        [ Element.el
-            [ Element.alignRight
-            , Element.paddingEach { top = 0, right = 12, bottom = 0, left = 0 }
-            , Font.color <| rgb255 0 0 0
-            ]
-            (text <|
-                String.fromInt total
+        , Element.below
+            (Element.el
+                [ Element.alignRight
+                , Element.paddingEach { top = 6, right = 12, bottom = 6, left = 0 }
+                , Font.color <| rgb255 0 0 0
+                ]
+                (Element.text <| String.fromInt total)
             )
         ]
+        (Element.text <| "")
 
 
 viewportSize : Maybe Dom.Element -> Element.Length
