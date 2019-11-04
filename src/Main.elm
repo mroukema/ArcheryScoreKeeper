@@ -63,6 +63,7 @@ type Msg
     | ArrowDragStart RecordId
     | ArrowDragMove RecordId Int IntPosition
     | ArrowDragEnd RecordId
+    | AddShot IntPosition
 
 
 type alias Model =
@@ -201,6 +202,7 @@ type alias EndStyle r =
         , id : List (Element.Attribute Msg)
         , score : List (Element.Attribute Msg)
         , total : List (Element.Attribute Msg)
+        , selectedRecord : List (Element.Attribute Msg)
     }
 
 
@@ -347,8 +349,71 @@ update msg model =
             , Cmd.none
             )
 
+        AddShot pos ->
+            ( { model
+                | scorecard =
+                    addShot model.scorecard
+                        model.selectedShot
+                        (Target.translateClientToSvgCoordinates
+                            Target.tenRingTarget.viewBox
+                            model.viewport
+                            pos
+                        )
+              }
+            , Cmd.none
+            )
+
         NoOp ->
             ( model, Cmd.none )
+
+
+maybeToBool maybe =
+    case maybe of
+        Maybe.Nothing ->
+            False
+
+        Just _ ->
+            True
+
+
+lookupRecord : Scorecard -> Maybe RecordId -> Maybe EndRecord
+lookupRecord scores selection =
+    case selection of
+        Maybe.Nothing ->
+            Maybe.Nothing
+
+        Just ( endId, shotId ) ->
+            case Dict.get endId scores of
+                Maybe.Nothing ->
+                    Maybe.Nothing
+
+                Just end ->
+                    Dict.get shotId end
+
+
+addShot scores maybeSelection pos =
+    case maybeSelection of
+        Maybe.Nothing ->
+            scores
+
+        Just selection ->
+            Dict.insert
+                (Tuple.first selection)
+                (Dict.insert
+                    (Tuple.second
+                        selection
+                    )
+                    (ShotRecord (Score "X" 10)
+                        (Shot arrowSpec pos)
+                        tenRingBuiltin
+                    )
+                    (Dict.get
+                        (Tuple.first selection)
+                        scores
+                        |> Maybe.withDefault Dict.empty
+                    )
+                )
+                scores
 
 
 scoreShotAtPosition : ScoreTarget -> Shot -> Score
@@ -594,7 +659,7 @@ targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
                 Nothing ->
                     ( 0, 0 )
 
-        eventAttr =
+        mouseMoveEventAttr =
             case dragInProgresss of
                 True ->
                     [ SvgEvents.on "mousemove"
@@ -612,6 +677,29 @@ targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
 
                 False ->
                     []
+
+        -- When a record without shot info is selected can click on target to add shot
+        eventAttr =
+            case shotSelection of
+                Nothing ->
+                    mouseMoveEventAttr
+
+                Selection ( _, record ) ->
+                    case record of
+                        ScoreRecord _ ->
+                            [ SvgEvents.on "mouseup"
+                                (Decode.map AddShot
+                                    (Decode.map2
+                                        IntPosition
+                                        (Decode.field "clientX" Decode.int)
+                                        (Decode.field "clientY" Decode.int)
+                                    )
+                                )
+                            ]
+                                ++ mouseMoveEventAttr
+
+                        ShotRecord _ _ _ ->
+                            mouseMoveEventAttr
 
         endShots =
             excludeSelectedShot shotSelection selectedEnds
@@ -752,7 +840,7 @@ renderSelectedEnds : RecordCard -> RecordSelection -> List (Element Msg)
 renderSelectedEnds selectedEnds record =
     selectedEnds
         |> groupByEnd
-        |> List.map renderSelectedEnd
+        |> List.map (renderSelectedEnd <| record)
 
 
 baseEndStyle : EndStyle {}
@@ -765,13 +853,22 @@ baseEndStyle =
     , id =
         [ Element.padding 6 ]
     , score =
-        [ Element.width fill
+        [ Element.width <| px 30
+        , Element.centerX
         , Font.center
         ]
     , total =
         [ Element.alignRight
         , Element.paddingEach { top = 0, right = 12, bottom = 0, left = 0 }
         , Font.center
+        ]
+    , selectedRecord =
+        [ Element.spacing 12
+        , Element.width <| px 30
+        , Element.spaceEvenly
+        , Element.centerX
+        , Font.color <| rgba255 70 50 230 0.8
+        , Element.color <| rgba255 143 224 255 0.5
         ]
     }
 
@@ -816,8 +913,8 @@ unselectedEndStyle index =
     }
 
 
-renderSelectedEnd : RecordList -> Element Msg
-renderSelectedEnd end =
+renderSelectedEnd : RecordSelection -> RecordList -> Element Msg
+renderSelectedEnd selectedId end =
     let
         -- TODO improve
         endId =
@@ -825,7 +922,7 @@ renderSelectedEnd end =
                 |> Maybe.andThen (Just << Tuple.first << Tuple.first)
                 |> Maybe.withDefault 0
     in
-    renderScoringEnd (selectedEndStyle endId) end
+    renderScoringEnd (selectedEndStyle endId) selectedId end
 
 
 renderUnselectedEnd : RecordList -> Element Msg
@@ -837,11 +934,11 @@ renderUnselectedEnd end =
                 |> Maybe.andThen (Just << Tuple.first << Tuple.first)
                 |> Maybe.withDefault 0
     in
-    renderScoringEnd (unselectedEndStyle endId) end
+    renderScoringEnd (unselectedEndStyle endId) Nothing end
 
 
-renderScoringEnd : EndStyle r -> RecordList -> Element Msg
-renderScoringEnd endStyle end =
+renderScoringEnd : EndStyle r -> RecordSelection -> RecordList -> Element Msg
+renderScoringEnd endStyle scoreSelection end =
     let
         -- TODO improve
         endId =
@@ -851,7 +948,7 @@ renderScoringEnd endStyle end =
     in
     List.concat
         [ [ endNumber endStyle.id endId ]
-        , renderScores endStyle.score end
+        , renderScores endStyle end scoreSelection
         , [ endTotal endStyle.total end ]
         ]
         |> Element.row endStyle.row
@@ -884,9 +981,23 @@ endTotal style end =
         |> Element.el style
 
 
-renderScores : List (Element.Attribute Msg) -> RecordList -> List (Element Msg)
-renderScores style end =
-    List.map (renderScore style) end
+renderScores : EndStyle r -> RecordList -> RecordSelection -> List (Element Msg)
+renderScores styles end scoreSelection =
+    List.map
+        (\(( scoreId, _ ) as score) ->
+            case scoreSelection of
+                Nothing ->
+                    renderScore styles.score score
+
+                Selection ( selectionId, _ ) ->
+                    case scoreId == selectionId of
+                        True ->
+                            renderSelectedScore styles.selectedRecord score
+
+                        False ->
+                            renderScore styles.score score
+        )
+        end
 
 
 renderPosInfo pos =
@@ -903,22 +1014,43 @@ renderPosInfo pos =
         ]
 
 
+renderSelectedScore : List (Element.Attribute Msg) -> ( RecordId, EndRecord ) -> Element Msg
+renderSelectedScore style ( recordId, record ) =
+    case record of
+        ShotRecord score shot _ ->
+            Element.el [ Element.width fill ] <|
+                Element.el
+                    ((Element.onClick <| SelectShot Maybe.Nothing) :: style)
+                    (Element.el
+                        [ Element.centerX
+                        , Element.onRight (renderPosInfo shot.pos)
+                        ]
+                        (text score.label)
+                    )
+
+        ScoreRecord score ->
+            Element.el [ Element.width fill ] <|
+                Element.el
+                    ((Element.onClick <| SelectShot Maybe.Nothing) :: style)
+                    (text score.label)
+
+
 renderScore : List (Element.Attribute Msg) -> ( RecordId, EndRecord ) -> Element Msg
 renderScore style ( recordId, record ) =
     case record of
         ShotRecord score shot _ ->
-            Element.el
-                (List.append
-                    [ Element.onClick <| SelectShot (Just recordId)
-                    ]
-                    style
-                )
-                (Element.el
-                    [ Element.centerX
-                    , Element.onRight (renderPosInfo shot.pos)
-                    ]
-                    (text score.label)
-                )
+            Element.el [ Element.width fill ] <|
+                Element.el
+                    ((Element.onClick <| SelectShot (Just recordId)) :: style)
+                    (Element.el
+                        [ Element.centerX
+                        , Element.onRight (renderPosInfo shot.pos)
+                        ]
+                        (text score.label)
+                    )
 
         ScoreRecord score ->
-            Element.el style (text score.label)
+            Element.el [ Element.width fill ] <|
+                Element.el
+                    ((Element.onClick <| SelectShot (Just recordId)) :: style)
+                    (text score.label)
