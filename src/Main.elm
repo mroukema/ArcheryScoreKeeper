@@ -430,9 +430,13 @@ addShot scores maybeSelection pos =
                     (Tuple.second
                         selection
                     )
-                    (ShotRecord (Score "X" 10)
-                        (Shot arrowSpec pos)
-                        tenRingBuiltin
+                    (updateArrowPos
+                        (ShotRecord
+                            (Score "-" 0)
+                            (Shot Arrow.defaultArrow pos)
+                            tenRingBuiltin
+                        )
+                        pos
                     )
                     (Dict.get
                         (Tuple.first selection)
@@ -461,7 +465,7 @@ updateArrowPos record pos =
                     case Dict.get targetName builtInTargets of
                         Just scoreTarget ->
                             ShotRecord
-                                (scoreShotAtPosition scoreTarget updatedShot)
+                                (Target.scorePos scoreTarget updatedShot)
                                 updatedShot
                                 tenRingBuiltin
 
@@ -624,7 +628,7 @@ scorecard model =
                 , [ renderEndlistTotal model.selectedEnds model.viewsize ]
                 , targetView
                 , targetScorecard model.unselectedEnds
-                , [ scorecardTotal <| sumRecords (Dict.union model.selectedEnds model.unselectedEnds) ]
+                , [ scorecardTotal <| sumRecords <| Dict.union model.selectedEnds model.unselectedEnds ]
                 , [ addNewEnd ]
                 ]
             )
@@ -960,7 +964,6 @@ utilityEndStyle : EndStyle {}
 utilityEndStyle =
     { baseEndStyle
         | row = baseEndStyle.row ++ [ Element.color <| rgba255 150 200 200 0.8 ]
-        , total = baseEndStyle.total ++ [ Element.padding 6 ]
     }
 
 
@@ -1025,7 +1028,7 @@ toRecordValue record =
 scorecardTotal : Int -> Element Msg
 scorecardTotal total =
     Element.row utilityEndStyle.row
-        [ Element.el (utilityEndStyle.total ++ [ Element.alignLeft ]) (Element.text "Total")
+        [ Element.el (utilityEndStyle.id ++ [ Element.alignLeft ]) (Element.text "Total")
         , Element.el utilityEndStyle.total (Element.text <| String.fromInt total)
         ]
 
