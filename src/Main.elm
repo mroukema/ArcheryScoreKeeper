@@ -607,7 +607,8 @@ scorecard model =
         targetView =
             case (not << Dict.isEmpty) model.selectedEnds of
                 True ->
-                    [ targetElement
+                    [ renderEndlistTotal model.selectedEnds model.viewsize
+                    , targetElement
                         { selectedEnds = model.selectedEnds
                         , viewsize = model.viewsize
                         , shotSelection = model.selectedRecord
@@ -625,7 +626,6 @@ scorecard model =
             ]
             (List.concat
                 [ renderSelectedEnds model.selectedEnds model.selectedRecord
-                , [ renderEndlistTotal model.selectedEnds model.viewsize ]
                 , targetView
                 , targetScorecard model.unselectedEnds
                 , [ scorecardTotal <| sumRecords <| Dict.union model.selectedEnds model.unselectedEnds ]
