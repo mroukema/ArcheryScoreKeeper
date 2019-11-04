@@ -64,6 +64,7 @@ type Msg
     | ArrowDragMove RecordId Int IntPosition
     | ArrowDragEnd RecordId
     | AddShot IntPosition
+    | AddEnd
 
 
 type alias Model =
@@ -363,6 +364,9 @@ update msg model =
             , Cmd.none
             )
 
+        AddEnd ->
+            ( { model | scorecard = addEnd model.scorecard }, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -389,6 +393,29 @@ lookupRecord scores selection =
 
                 Just end ->
                     Dict.get shotId end
+
+
+emptyEnd =
+    Dict.fromList <|
+        List.map2
+            Tuple.pair
+            (List.range 1 3)
+            [ emptyShotRecord
+            , emptyShotRecord
+            , emptyShotRecord
+            ]
+
+
+
+--addEnd : Scorecard -> Scorecard
+
+
+addEnd scores =
+    let
+        nextEndNum =
+            1 + Dict.size scores
+    in
+    Dict.insert nextEndNum emptyEnd scores
 
 
 addShot scores maybeSelection pos =
@@ -597,18 +624,36 @@ scorecard model =
                 , [ renderEndlistTotal model.selectedEnds model.viewsize ]
                 , targetView
                 , targetScorecard model.unselectedEnds
+                , [ scorecardTotal <| sumRecords (Dict.union model.selectedEnds model.unselectedEnds) ]
+                , [ addNewEnd ]
                 ]
             )
         )
 
 
+addNewEnd =
+    Element.row
+        utilityEndStyle.row
+        [ Element.el
+            [ Element.centerX
+            , Element.onClick AddEnd
+            , Element.padding 6
+            ]
+            (Element.text "New End")
+        ]
+
+
+sumRecords records =
+    records
+        |> Dict.toList
+        |> List.map (Tuple.second >> toRecordValue)
+        |> List.sum
+
+
 renderEndlistTotal selectedEnds viewsize =
     let
         total =
-            selectedEnds
-                |> Dict.toList
-                |> List.map (Tuple.second >> toRecordValue)
-                |> List.sum
+            sumRecords selectedEnds
     in
     Element.el
         [ Element.width viewsize
@@ -903,13 +948,19 @@ unselectedEndStyle : EndId -> EndStyle {}
 unselectedEndStyle index =
     { baseEndStyle
         | id =
-            List.append
-                baseEndStyle.id
-                [ Element.onClick <| SelectEnd index ]
+            baseEndStyle.id
+                ++ [ Element.onClick <| SelectEnd index ]
         , row =
-            List.append
-                baseEndStyle.row
-                [ Element.color <| rgba255 150 200 200 0.8 ]
+            baseEndStyle.row
+                ++ [ Element.color <| rgba255 150 200 200 0.8 ]
+    }
+
+
+utilityEndStyle : EndStyle {}
+utilityEndStyle =
+    { baseEndStyle
+        | row = baseEndStyle.row ++ [ Element.color <| rgba255 150 200 200 0.8 ]
+        , total = baseEndStyle.total ++ [ Element.padding 6 ]
     }
 
 
@@ -969,6 +1020,14 @@ toRecordValue record =
 
         ShotRecord score _ _ ->
             score.value
+
+
+scorecardTotal : Int -> Element Msg
+scorecardTotal total =
+    Element.row utilityEndStyle.row
+        [ Element.el (utilityEndStyle.total ++ [ Element.alignLeft ]) (Element.text "Total")
+        , Element.el utilityEndStyle.total (Element.text <| String.fromInt total)
+        ]
 
 
 endTotal : List (Element.Attribute msg) -> RecordList -> Element msg
