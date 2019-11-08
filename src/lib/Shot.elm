@@ -1,7 +1,7 @@
-module Shot exposing (Shot)
+module Lib.Shot exposing (Shot)
 
-import Arrow exposing (Arrow, ArrowPos)
-import Target exposing (Target)
+import Lib.Arrow exposing (Arrow, ArrowPos)
+import Lib.Target exposing (Target)
 
 
 type Shot

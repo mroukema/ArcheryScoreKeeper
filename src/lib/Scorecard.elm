@@ -1,8 +1,8 @@
-module Scorecard exposing (Scorecard)
+module Lib.Scorecard exposing (Scorecard)
 
 import Dict exposing (Dict)
-import Score
-import Shot
+import Lib.Score as Score
+import Lib.Shot as Shot
 
 
 {-| -}

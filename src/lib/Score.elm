@@ -1,4 +1,4 @@
-module Score exposing (Label, Score(..), Value, label, value)
+module Lib.Score exposing (Label, Score(..), Value, label, value)
 
 
 type alias Label =

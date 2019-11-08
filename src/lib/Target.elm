@@ -1,8 +1,8 @@
-module Target exposing (Target)
+module Lib.Target exposing (Target)
 
 {-| -}
 
-import Score exposing (Score(..))
+import Lib.Score exposing (Score(..))
 import Svg
 import Svg.Attributes as SvgAttr
 

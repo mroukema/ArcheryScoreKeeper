@@ -1,4 +1,4 @@
-module Arrow exposing (Arrow, ArrowMetadata, ArrowPos)
+module Lib.Arrow exposing (Arrow, ArrowMetadata, ArrowPos)
 
 {-| -}
 

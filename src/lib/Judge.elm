@@ -1,4 +1,4 @@
-module Judge exposing (judge)
+module Lib.Judge exposing (judge)
 
 {-| Judge
 Actions and operations related scoring
