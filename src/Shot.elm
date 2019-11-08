@@ -5,32 +5,32 @@ import Target exposing (Target)
 
 
 type Shot
-    = Shot Arrow Target
+    = Shot ArrowPos Arrow (Target () Never)
 
 
 shotPos : Shot -> ArrowPos
 shotPos shot =
     case shot of
-        Shot arrow _ ->
-            arrow.pos
+        Shot pos _ _ ->
+            pos
 
 
 shotRadius : Shot -> Float
 shotRadius shot =
     case shot of
-        Shot arrow _ ->
+        Shot _ arrow _ ->
             arrow.radius
 
 
-shotTarget : Shot -> Target
+shotTarget : Shot -> Target () Never
 shotTarget shot =
     case shot of
-        Shot _ target ->
+        Shot _ _ target ->
             target
 
 
 shotArrow : Shot -> Arrow
 shotArrow shot =
     case shot of
-        Shot arrow _ ->
+        Shot _ arrow _ ->
             arrow

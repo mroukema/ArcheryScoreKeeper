@@ -1,4 +1,4 @@
-module Score exposing (Label, Score, Value)
+module Score exposing (Label, Score(..), Value, label, value)
 
 
 type alias Label =
