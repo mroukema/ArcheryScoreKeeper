@@ -28,30 +28,28 @@ spec =
         (\_ ->
             { elements = []
             , defaultScore = Score "-" 0
-            , scoreFunc = \_ -> Score "X" 10
             }
         )
+        (\_ -> Score "X" 10)
 
 
 {-| -}
 type TargetSpec model msg
-    = SvgSpec (model -> SvgTargetSpec msg)
+    = SvgSpec (model -> SvgTargetSpec msg) (Pos -> Score)
 
 
 {-| -}
 type alias SvgTargetSpec msg =
     { elements : List (SvgElement msg)
     , defaultScore : Score
-    , scoreFunc : Pos -> Score
+
+    --    , scoreFunc : Pos -> Score
     }
 
 
 {-| -}
-type alias Target model msg =
-    { spec : TargetSpec model msg
-    , rules : ScoringRules
-    , meta : Metadata
-    }
+type Target model msg
+    = Target (TargetSpec model msg) ScoringRules Metadata
 
 
 {-| -}

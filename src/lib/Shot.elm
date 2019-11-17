@@ -1,36 +1,44 @@
 module Lib.Shot exposing (Shot)
 
-import Lib.Arrow exposing (Arrow, ArrowPos)
+import Lib.Arrow exposing (Arrow, Radius)
+import Lib.Score exposing (Score)
 import Lib.Target exposing (Target)
 
 
+type alias Pos =
+    { x : Float
+    , y : Float
+    }
+
+
 type Shot
-    = Shot ArrowPos Arrow (Target () Never)
+    = Shot Pos Arrow (Pos -> Score)
 
 
-shotPos : Shot -> ArrowPos
-shotPos shot =
+pos : Shot -> Pos
+pos shot =
     case shot of
-        Shot pos _ _ ->
-            pos
+        Shot pos_ _ _ ->
+            pos_
 
 
-shotRadius : Shot -> Float
-shotRadius shot =
+radius : Shot -> Radius
+radius shot =
     case shot of
-        Shot _ arrow _ ->
-            arrow.radius
+        Shot _ radius_ _ ->
+            radius_
 
 
-shotTarget : Shot -> Target () Never
-shotTarget shot =
+
+-- target : Shot -> Target () Never
+-- target shot =
+--     case shot of
+--         Shot _ _ target_ ->
+--             target_
+
+
+arrow : Shot -> Arrow
+arrow shot =
     case shot of
-        Shot _ _ target ->
-            target
-
-
-shotArrow : Shot -> Arrow
-shotArrow shot =
-    case shot of
-        Shot _ arrow _ ->
-            arrow
+        Shot _ arrow_ _ ->
+            arrow_

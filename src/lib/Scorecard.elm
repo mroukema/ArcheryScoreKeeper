@@ -32,6 +32,13 @@ getEnd endNum scores =
         |> Dict.get endNum
 
 
+{-| getScore
+Retrieve a score from an End
+
+    endNum: get
+    shotNum: key used to access
+
+-}
 getScore : Int -> Int -> Scorecard -> Maybe Record
 getScore endNum shotNum scores =
     getEnd endNum scores

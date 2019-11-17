@@ -1,8 +1,12 @@
-module Lib.Arrow exposing (Arrow, ArrowMetadata, ArrowPos)
+module Lib.Arrow exposing (Arrow, Radius)
 
 {-| -}
 
 -- Types
+
+
+type alias Radius =
+    Float
 
 
 {-| -}
@@ -17,9 +21,10 @@ type alias ArrowMetadata =
     {}
 
 
-{-| -}
+{-| Arrow
+-}
 type alias Arrow =
-    { radius : Float }
+    Radius
 
 
 
