@@ -1,0 +1,19 @@
+{
+  "name": "archeryscorekeeper",
+  "version": "1.0.0",
+  "description": "An app for keeping score using a visually rich, interactive interface",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd ./client && npm run build; cd ../score-keeper-server && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mroukema/ArcheryScoreKeeper.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mroukema/ArcheryScoreKeeper/issues"
+  },
+  "homepage": "https://github.com/mroukema/ArcheryScoreKeeper#readme"
+}
