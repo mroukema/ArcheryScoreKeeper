@@ -8,8 +8,9 @@
     "clean": "rm -rf ./target/*; mkdir -p ./target;",
     "start": "npm run elm-live",
     "build": "npm run clean; npm run copy-index; npm run elm-build",
+    "build-debug": "npm run clean; npm run copy-index; npm run elm-build -- --debug",
     "elm-live": "elm-live src/Main.elm -- --output=elm.js --debug",
-    "elm-build": "cp index.html target/. && elm make --output=target/elm.js --debug src/Main.elm",
+    "elm-build": "cp index.html target/. && elm make --output=target/elm.js src/Main.elm",
     "copy-index": "cp ./index.html ./target/."
   },
   "repository": {
