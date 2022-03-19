@@ -14,6 +14,8 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes as HtmlAttr
+import Html.Events.Extra.Mouse as Mouse
+import Html.Events.Extra.Pointer as Pointer
 import Json.Decode as Decode
 import Score exposing (Score)
 import Set exposing (Set)
@@ -371,30 +373,6 @@ update msg model =
             ( model, Cmd.none )
 
 
-maybeToBool maybe =
-    case maybe of
-        Maybe.Nothing ->
-            False
-
-        Just _ ->
-            True
-
-
-lookupRecord : Scorecard -> Maybe RecordId -> Maybe EndRecord
-lookupRecord scores selection =
-    case selection of
-        Maybe.Nothing ->
-            Maybe.Nothing
-
-        Just ( endId, shotId ) ->
-            case Dict.get endId scores of
-                Maybe.Nothing ->
-                    Maybe.Nothing
-
-                Just end ->
-                    Dict.get shotId end
-
-
 emptyEnd =
     Dict.fromList <|
         List.map2
@@ -710,18 +688,30 @@ targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
 
         mouseMoveEventAttr =
             case dragInProgresss of
+                -- True ->
+                --     [ SvgEvents.on "mousemove"
+                --         (Decode.map2
+                --             (ArrowDragMove selectedRecordId)
+                --             (Decode.field "buttons" Decode.int)
+                --             (Decode.map2
+                --                 IntPosition
+                --                 (Decode.field "clientX" Decode.int)
+                --                 (Decode.field "clientY" Decode.int)
+                --             )
+                --         )
+                --     , SvgEvents.onMouseUp <| ArrowDragEnd selectedRecordId
+                --     ]
                 True ->
-                    [ SvgEvents.on "mousemove"
-                        (Decode.map2
-                            (ArrowDragMove selectedRecordId)
-                            (Decode.field "buttons" Decode.int)
-                            (Decode.map2
-                                IntPosition
-                                (Decode.field "clientX" Decode.int)
-                                (Decode.field "clientY" Decode.int)
-                            )
+                    [ Pointer.onMove
+                        (\event ->
+                            ArrowDragMove selectedRecordId
+                                1
+                                (IntPosition
+                                    (round <| Tuple.first event.pointer.clientPos)
+                                    (round <| Tuple.second event.pointer.clientPos)
+                                )
                         )
-                    , SvgEvents.onMouseUp <| ArrowDragEnd selectedRecordId
+                    , Pointer.onUp <| always <| ArrowDragEnd selectedRecordId
                     ]
 
                 False ->
@@ -736,14 +726,12 @@ targetElement { viewsize, selectedEnds, shotSelection, dragInProgresss } =
                 Selection ( _, record ) ->
                     case record of
                         ScoreRecord _ ->
-                            [ SvgEvents.on "mouseup"
-                                (Decode.map AddShot
-                                    (Decode.map2
+                            [ Pointer.onUp <|
+                                \event ->
+                                    AddShot <|
                                         IntPosition
-                                        (Decode.field "clientX" Decode.int)
-                                        (Decode.field "clientY" Decode.int)
-                                    )
-                                )
+                                            (round <| Tuple.first event.pointer.clientPos)
+                                            (round <| Tuple.second event.pointer.clientPos)
                             ]
                                 ++ mouseMoveEventAttr
 
@@ -809,6 +797,24 @@ onMouseDownMove decoder =
         )
 
 
+onPointerDownMove : Msg -> Html.Attribute Msg
+onPointerDownMove decoder =
+    Pointer.onMove
+        (\event ->
+            case event.pointerType of
+                Pointer.MouseType ->
+                    case Debug.log "Button" event.pointer.button of
+                        Mouse.MainButton ->
+                            decoder
+
+                        _ ->
+                            NoOp
+
+                _ ->
+                    decoder
+        )
+
+
 renderShots : RecordList -> RecordSelection -> Bool -> Svg Msg
 renderShots shots recordSelection dragInProgresss =
     let
@@ -823,8 +829,8 @@ renderShots shots recordSelection dragInProgresss =
         selectedArrowEvents =
             case dragInProgresss of
                 False ->
-                    [ SvgEvents.onClick <| SelectShot Maybe.Nothing
-                    , onMouseDownMove <| Decode.succeed (ArrowDragStart selectedRecordId)
+                    [ Pointer.onDown <| always <| SelectShot Maybe.Nothing
+                    , onPointerDownMove <| ArrowDragStart selectedRecordId
                     ]
 
                 True ->
@@ -854,7 +860,7 @@ renderShots shots recordSelection dragInProgresss =
                         ShotRecord score shot _ ->
                             arrow
                                 shot
-                                [ SvgEvents.onMouseDown <| SelectShot <| Just recordId
+                                [ Pointer.onDown <| always <| SelectShot <| Just recordId
                                 ]
 
                         _ ->
